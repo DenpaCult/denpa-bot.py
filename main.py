@@ -7,12 +7,12 @@ from dao.dao import BaseDAO, Database
 cfg = read_config("test.json")
 bot = commands.Bot(command_prefix=cfg['prefix'], intents=discord.Intents.all())
 
-async def load_extensions():
+async def load_extentions(folder: str):
     '''
-    load everything in the commands/ folder as a command
-    - commands should be a class that inherit commands.Cog
+    load everything in the {folder} folder as a command and/or event
+    - commands and events should be a class that inherit commands.Cog
     - same name as the file
-    - methods in the class that define the command, they have the @commands.command() decorator
+    - methods in the class that define the command, they have the @commands.command() decorator (@commands.Cog.listener for events)
       are async, self and ctx as arguments, the name of the method is the name of the command in discord
       ex: def Ping -> {prefix}ping
     - an async setup function should be in the file outside of the class with a bot argument
@@ -20,19 +20,26 @@ async def load_extensions():
     - an example is below:
 
     class test_command(commands.Cog):
-    def __init__(self, bot):
-        self.bot = bot
+        def __init__(self, bot):
+            self.bot = bot
 
-    @commands.command()
-    async def ping(self, ctx):
-        await ctx.send("Pong!")
+        @commands.command() # command
+        async def ping(self, ctx):
+            await ctx.send("Pong!")
+
+
+        @commands.Cog.listener() # event
+        async def on_ready(self):
+            print(self.bot.user.name)
+
+
 
     async def setup(bot):
         await bot.add_cog(test_command(bot))
     '''
-    for filename in os.listdir("./commands"):
+    for filename in os.listdir(folder):
         if filename.endswith(".py") and filename != "__init__.py":
-            extension = f"commands.{filename[:-3]}"
+            extension = f"{folder}.{filename[:-3]}"
             try:
                 await bot.load_extension(extension)
                 print(f"Loaded {extension}")
@@ -42,10 +49,9 @@ async def load_extensions():
 async def main():
     db = Database(cfg["sqlite_file"])
     d = BaseDAO(db)
-    d.execute("INSERT INTO test VALUES(2,1,1)")
-    print(d.fetch_all("SELECT * FROM test"))
     async with bot:
-        await load_extensions()
+        await load_extentions('events')
+        await load_extentions('commands')
         await bot.start(cfg['token'])
 
 if __name__ == "__main__":

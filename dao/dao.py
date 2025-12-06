@@ -1,11 +1,4 @@
 import sqlite3
-from config import config
-
-cfg = config.read_config()
-
-con = sqlite3.connect(cfg["sqlite_file"])
-
-cur = con.cursor
 
 class Database:
     def __init__(self, path: str):
