@@ -3,11 +3,11 @@ import discord
 from config.config import config
 from logger.logger import logger
 
-_logger = logger.instance()
 
 class auto_role(commands.Cog):
     def __init__(self, bot):
         self.bot: commands.Bot = bot
+        self.logger = logger.instance()
         self.config = config.read_config()
 
     @commands.Cog.listener()
@@ -15,7 +15,7 @@ class auto_role(commands.Cog):
         roles = await member.guild.fetch_roles()
         new_role =  list(filter(lambda x: x.name == self.config["defaultrole"], roles))[0]
         await member.add_roles(new_role)
-        _logger.log(f'added role {new_role} to {member.name}')
+        self.logger.log(f'added role {new_role} to {member.name}')
 
 async def setup(bot):
     await bot.add_cog(auto_role(bot))
