@@ -1,10 +1,11 @@
 from discord.ext import commands
 import discord
-from config.config import read_config
+from config.config import config
 import os
 from dao.dao import BaseDAO, Database
+from logger.logger import logger
 
-cfg = read_config("test.json")
+cfg = config.read_config("test.json")
 bot = commands.Bot(command_prefix=cfg['prefix'], intents=discord.Intents.all())
 
 async def load_extentions(folder: str):
@@ -47,8 +48,6 @@ async def load_extentions(folder: str):
                 print(f"Failed to load {extension}: {e}")
 
 async def main():
-    db = Database(cfg["sqlite_file"])
-    d = BaseDAO(db)
     async with bot:
         await load_extentions('events')
         await load_extentions('commands')
