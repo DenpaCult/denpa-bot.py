@@ -21,7 +21,7 @@
   "defaultRoles": [
     987793980227985518
   ],
-  "kokorole": "856669801005711401",
+  "kokoRole": 856669801005711401,
   "defaultWoodConfig": {
     "threshold": 1,
     "channelId": "channel_id",
