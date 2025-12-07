@@ -1,5 +1,5 @@
 from dao.dao import BaseDAO, Database
-from base.logger import Logger
+import logging
 from models.blacklist import BlackList
 
 
@@ -15,7 +15,7 @@ CREATE TABLE blacklists (
 class BlackListDao(BaseDAO):
     def __init__(self, db: Database = Database("toromi.db")):
         BaseDAO.__init__(self, db)
-        self.logger = Logger.instance()
+        self.logger = logging.getLogger()
 
     def newBlackList(self, blacklist: BlackList):
         res = self.fetch_one("SELECT * FROM blacklists WHERE role_name = ? AND role_id = ?;", (blacklist.name, blacklist.id))
@@ -23,5 +23,5 @@ class BlackListDao(BaseDAO):
             self.logger.warn(f"role {blacklist.name} already exists: {res}")
             return
         
-        self.logger.log("inserting")
+        self.logger.info("inserting")
         self.execute("INSERT INTO blacklists (role_name, role_id) VALUES(?, ?);", (blacklist.name, blacklist.id))

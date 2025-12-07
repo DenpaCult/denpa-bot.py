@@ -4,10 +4,13 @@ import discord
 from base.config import Config
 import os
 from dao.dao import BaseDAO, Database
-from base.logger import Logger
+import logging
+import logging.config
+
+logging.config.fileConfig("logging.ini")
+logger = logging.getLogger(__name__)
 
 load_dotenv()
-
 
 cfg = Config.read_config("config.json")
 bot = commands.Bot(command_prefix=cfg["prefix"], intents=discord.Intents.all())
@@ -63,6 +66,7 @@ async def on_command_error(ctx, error):
 
 
 async def main():
+    logger.info("hi")
     async with bot:
         await load_extentions("events")
         await load_extentions("commands")
