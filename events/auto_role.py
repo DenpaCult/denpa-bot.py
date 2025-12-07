@@ -1,14 +1,14 @@
 from discord.ext.commands import Bot, Cog
 from discord import Member, Object
-from config.config import config
-from logger.logger import logger
+from base.config import Config
+from base.logger import Logger
 
 
 class AutoRole(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.logger = logger.instance()
-        self.config = config.read_config()
+        self.logger = Logger.instance()
+        self.config = Config.read_config()
 
     @Cog.listener()
     async def on_member_join(self, member: Member):

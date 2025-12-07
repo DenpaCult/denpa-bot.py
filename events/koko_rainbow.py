@@ -2,13 +2,13 @@ import asyncio
 import random
 from discord.ext.commands import Bot, Cog
 from discord import Guild, Role, Colour
-from config.config import config
+from base.config import Config
 
 
 class KokoRainbow(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.config = config.read_config()
+        self.config = Config.read_config()
 
         self.task = None  # TODO: type this?
 

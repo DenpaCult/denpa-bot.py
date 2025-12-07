@@ -1,15 +1,15 @@
 from dotenv import load_dotenv
 from discord.ext import commands
 import discord
-from config.config import config
+from base.config import Config
 import os
 from dao.dao import BaseDAO, Database
-from logger.logger import logger
+from base.logger import Logger
 
 load_dotenv()
 
 
-cfg = config.read_config("config.json")
+cfg = Config.read_config("config.json")
 bot = commands.Bot(command_prefix=cfg["prefix"], intents=discord.Intents.all())
 
 

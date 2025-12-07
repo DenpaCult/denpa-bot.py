@@ -1,15 +1,15 @@
 import re
 import discord
 from discord.ext.commands import Bot, Cog
-from config.config import config
-from logger.logger import logger
+from base.Config import Config
+from base.Logger import Logger
 
 
 class AutoReact(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.logger = logger.instance()
-        self.config = config.read_config()
+        self.logger = Logger.instance()
+        self.config = Config.read_config()
 
         self.pairs: list[tuple[re.Pattern[str], str]] = [
             compile_regex(self.config, "take"),
