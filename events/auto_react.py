@@ -32,4 +32,4 @@ async def setup(bot: Bot):
 
 def compile_regex(config: dict, text: str) -> tuple[re.Pattern[str], str]:
     m = re.compile(r"\W*".join(list(text)), re.IGNORECASE)
-    return (m, config["sametakes"][text])  # TODO: rename to autoReacts?
+    return (m, config["emoji"][text])
