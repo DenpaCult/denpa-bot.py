@@ -25,3 +25,5 @@ pyrightconfig.json
 *.db*
 
 uv.lock
+
+app.log
