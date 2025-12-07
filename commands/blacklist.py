@@ -14,9 +14,15 @@ class Blacklist(commands.Cog):
     async def blacklist(self, ctx: commands.Context, action: str, *args: str):
         match action.strip():
             case "list":
-                blacklisted = self.dao.get_all()
+                # TODO(kajo): surely the two list creations are unnecessary
+                ids = list(map(lambda x: x.id, self.dao.get_all()))
+                role_names = list(
+                    map(
+                        lambda x: x.name, filter(lambda r: r.id in ids, ctx.guild.roles)
+                    )
+                )
 
-                await ctx.send(f"{blacklisted}")
+                await ctx.send((f"{role_names}"))
                 return
 
             case "add":

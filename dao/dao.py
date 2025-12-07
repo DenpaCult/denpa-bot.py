@@ -1,6 +1,5 @@
 from sqlite3 import Cursor
 from database import Database
-from models.blacklist import BlacklistRole
 
 
 class BaseDAO:
@@ -23,5 +22,5 @@ class BaseDAO:
     def fetch_one(self, query, params=()):
         return self.read(query, params).fetchone()
 
-    def fetch_all(self, query, params=()):
+    def fetch_all(self, query, params=()) -> list:
         return self.read(query, params).fetchall()

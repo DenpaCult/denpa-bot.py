@@ -11,3 +11,6 @@ class BlacklistRole:
 
     def from_role(role: Role) -> type["BlacklistRole"]:
         return BlacklistRole(role.id)
+
+    def from_database(item: tuple[int, int]) -> type["BlacklistRole"]:
+        return BlacklistRole(item[1])
