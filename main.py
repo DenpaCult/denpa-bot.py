@@ -53,6 +53,15 @@ async def load_extentions(folder: str):
                 print(f"Failed to load {extension}: {e}")
 
 
+@bot.event
+async def on_command_error(ctx, error):
+    import traceback
+    traceback.print_exception(type(error), error, error.__traceback__)
+
+    # Optional: send the error to Discord
+    await ctx.send(f"⚠️ Error: `{error}`")
+
+
 async def main():
     async with bot:
         await load_extentions("events")
