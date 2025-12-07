@@ -1,7 +1,7 @@
 from discord.ext import commands
 from base.config import Config
-from dao.blacklist_dao import BlackListDao
-from models.blacklist import BlackList
+from dao.blacklist_dao import BlacklistDAO
+from models.blacklist import BlacklistRole
 import math
 
 def is_in_guild(): # TODO: move this somewhere else
@@ -62,4 +62,3 @@ class role(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(role(bot))
-

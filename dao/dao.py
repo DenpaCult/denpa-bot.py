@@ -1,29 +1,27 @@
-import sqlite3
-
-class Database:
-    def __init__(self, path: str):
-        self.path = path
-
-    def connect(self):
-        return sqlite3.connect(self.path)
+from sqlite3 import Cursor
+from database import Database
+from models.blacklist import BlacklistRole
 
 
 class BaseDAO:
     def __init__(self, db: Database):
         self.db = db
 
-    def execute(self, query, params=()):
-        with self.db.connect() as conn:
-            cur = conn.cursor()
-            cur.execute(query, params)
-            conn.commit()
-            return cur
+    def write(self, query: str, params=()) -> Cursor:
+        cur = self.db.con.cursor()
+        cur.execute(query, params)
+        self.db.con.commit()
+
+        return cur
+
+    def read(self, query: str, params=()) -> Cursor:
+        cur = self.db.con.cursor()
+        cur.execute(query, params)
+
+        return cur
 
     def fetch_one(self, query, params=()):
-        cur = self.execute(query, params)
-        return cur.fetchone()
+        return self.read(query, params).fetchone()
 
     def fetch_all(self, query, params=()):
-        cur = self.execute(query, params)
-        return cur.fetchall()
-
+        return self.read(query, params).fetchall()
