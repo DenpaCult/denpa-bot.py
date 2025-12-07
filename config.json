@@ -1,8 +1,6 @@
 {
   "prefix": ";;",
-  "token": "TOKEN HERE",
   "sqlite_file": "toromi.db",
-  "guild_id": "GUILD_ID HERE",
   "emoji": {
     "play": "▶️",
     "stop": "⏹️",
