@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 from discord.ext import commands
 import discord
 from config.config import config
@@ -5,11 +6,15 @@ import os
 from dao.dao import BaseDAO, Database
 from logger.logger import logger
 
-cfg = config.read_config("test.json")
-bot = commands.Bot(command_prefix=cfg['prefix'], intents=discord.Intents.all())
+load_dotenv()
+
+
+cfg = config.read_config("config.json")
+bot = commands.Bot(command_prefix=cfg["prefix"], intents=discord.Intents.all())
+
 
 async def load_extentions(folder: str):
-    '''
+    """
     load everything in the {folder} folder as a command and/or event
     - commands and events should be a class that inherit commands.Cog
     - same name as the file
@@ -37,7 +42,7 @@ async def load_extentions(folder: str):
 
     async def setup(bot):
         await bot.add_cog(test_command(bot))
-    '''
+    """
     for filename in os.listdir(folder):
         if filename.endswith(".py") and filename != "__init__.py":
             extension = f"{folder}.{filename[:-3]}"
@@ -47,12 +52,15 @@ async def load_extentions(folder: str):
             except Exception as e:
                 print(f"Failed to load {extension}: {e}")
 
+
 async def main():
     async with bot:
-        await load_extentions('events')
-        await load_extentions('commands')
-        await bot.start(cfg['token'])
+        await load_extentions("events")
+        await load_extentions("commands")
+        await bot.start(os.environ["TOKEN"])
+
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
