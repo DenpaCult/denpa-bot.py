@@ -1,8 +1,8 @@
 import re
 import discord
 from discord.ext.commands import Bot, Cog
-from base.Config import Config
-from base.Logger import Logger
+from base.config import Config
+from base.logger import Logger
 
 
 class AutoReact(Cog):

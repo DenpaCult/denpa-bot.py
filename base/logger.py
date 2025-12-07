@@ -22,7 +22,7 @@ class bcolors:
     LIGHTGRAY = '\033[37m'
     RESET = '\033[0m'
 
-class logger:
+class Logger:
     
     _instance = None
     @classmethod
