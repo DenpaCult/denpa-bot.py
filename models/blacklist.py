@@ -6,13 +6,14 @@ class BlacklistRole:
     blacklisted roles for role command
     """
 
-    def __init__(self, id):
-        self.id = id
+    @classmethod
+    def from_role(cls, role: Role):
+        return cls(role.name)
 
-def from_role(role: Role) -> BlacklistRole:
-    # FIXME(kajo): deal with typing properly
-    return BlacklistRole(role.id)
-
-def from_database(item: tuple[int, int]) -> BlacklistRole:
-    # FIXME(kajo): deal with typing properly
-    return BlacklistRole(item[1])
+    @classmethod
+    def from_database(cls, item: tuple[str,str]):
+        return cls(item[1])
+    
+    def __init__(self, name: str):
+        self.name: str = name
+    

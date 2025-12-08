@@ -1,8 +1,11 @@
+import logging
 from discord.ext import commands
 from base.config import Config
+import math
+from dao import blacklist_dao
 from dao.blacklist_dao import BlacklistDAO
 from models.blacklist import BlacklistRole
-import math
+
 
 def is_in_guild(): # TODO: move this somewhere else
     async def predicate(ctx):
@@ -13,51 +16,56 @@ class role(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.read_config()
+        self.blacklist_dao = blacklist_dao.BlacklistDAO()
+        self.logger = logging.getLogger(__name__)
 
-    @commands.command(aliases=['broadcast', 'syntonize', 'roles', 'role'])
+    @commands.command(aliases=["broadcast", "syntonize", "roles", "role"])
     @is_in_guild()
     async def Role(self, ctx: commands.Context, *args):
-        import discord
+        from discord import Embed, Permissions
         # TODO retreive blacklists and filter by permission
         
         roles = list(map(lambda x: x.name,ctx.guild.roles))
 
-        embed = discord.Embed(color=0x0099ff, description=" ")
-        if (len(args) == 0):
-            roles_per_page = 5
-            pages = math.ceil(len(roles) / roles_per_page)
-            for i in range(pages):
-                msg = ', '.join(roles[i*roles_per_page:min(i*roles_per_page + roles_per_page, len(roles) - 1)])
+        has_permission = ctx.author.guild_permissions.administrator or ctx.author.guild_permissions.manage_roles
+        bl = list(map(lambda x: x.name ,self.blacklist_dao.get_all()))
+        roles = list(filter(lambda x: x not in bl, roles)) if not has_permission else roles
+    
+
+        match (len(args)):
+
+            case(0):
+                roles_per_page = 5
+                pages = math.ceil(len(roles) / roles_per_page)
+                for i in range(pages):
+
+                    embed = Embed(color=0x0099ff, description=" ")
+                    msg = ', '.join(roles[i*roles_per_page:min(i*roles_per_page + roles_per_page, len(roles) - 1)])
+                    embed.add_field(name="Roles", value=msg)
+                    await ctx.send(embed=embed)
+
+            case(2):
+                embed = Embed(color=0x0099ff, description=" ")
+                role_name = args[1]
+                found = list(filter(lambda x: x.name == role_name, ctx.guild.roles))
+                msg = f"{self.config['emoji']['error']} | Role doesn't exist"
+                if (found):
+                    match (args[0]):
+                        case "remove":
+                            if (not has_permission and found[0].name in bl):
+                                msg = f"{self.config['emoji']['error']} | Not allowed"
+                            else:
+                                await ctx.author.remove_roles(found[0])
+                                msg = f"{self.config['emoji']['denpabot']} | {ctx.author.display_name} is no longer in tune with {found[0].name}"
+                        case("add"):
+                            if (not has_permission and found[0].name in bl):
+                                msg = f"{self.config['emoji']['error']} | Not allowed"
+                            else:
+                                await ctx.author.add_roles(found[0])
+                                msg = f"{self.config['emoji']['denpabot']} | {ctx.author.display_name} established connection with {found[0].name}"
+                
                 embed.add_field(name="Roles", value=msg)
                 await ctx.send(embed=embed)
-
-        elif(len(args) == 2):
-            role_name = args[1]
-            found = list(filter(lambda x: x.name == role_name, ctx.guild.roles))
-            msg = f"{self.config['emoji']['error']} | Role doesn't exist"
-            if (found):
-
-                if (args[0] == "remove"):
-                    await ctx.author.remove_roles(found[0])
-                    msg = f"{self.config['emoji']['denpabot']} | {ctx.author.display_name} is no longer in tune with {found[0].name}"
-
-                elif(args[0] in ["bl", "blacklist"]):
-                    # TODO blacklist logic
-                    pass
-                elif(args[0] in ["unbl", "unblacklist"]):
-                    # TODO unblacklist logic
-                    pass
-
-                elif (args[0] == "add"):
-                    await ctx.author.add_roles(found[0])
-                    msg = f"{self.config['emoji']['denpabot']} | {ctx.author.display_name} established connection with {found[0].name}"
-
-            embed.add_field(name="Roles", value=msg)
-            await ctx.send(embed=embed)
-
-
-
-
 
 
 async def setup(bot):

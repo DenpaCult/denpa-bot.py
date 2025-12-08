@@ -1,7 +1,7 @@
+import logging
 from discord.ext.commands import Bot, Cog
 from discord import Member, Object
 from base.config import Config
-import logging
 
 
 class AutoRole(Cog):
@@ -17,8 +17,8 @@ class AutoRole(Cog):
             filter(lambda x: x.id in self.config["defaultRoles"], member.guild.roles),
         )
 
+        # TODO: Log action
         await member.add_roles(*role_ids)
-        self.logger.info(f"added default roles to member {member.name}")
 
 async def setup(bot: Bot):
     await bot.add_cog(AutoRole(bot))

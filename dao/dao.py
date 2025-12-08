@@ -1,6 +1,5 @@
 from sqlite3 import Cursor
-from database import Database
-
+from base.database import Database
 
 class BaseDAO:
     def __init__(self, db: Database):

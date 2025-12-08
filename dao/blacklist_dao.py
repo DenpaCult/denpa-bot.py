@@ -1,15 +1,14 @@
+from base.database import Database
+from dao.dao import BaseDAO
 import logging
-import models.blacklist
-from dao.dao import BaseDAO, Database
 from models.blacklist import BlacklistRole
+
 
 # FIXME(kajo): this isn't the responsibility of the DAO
 # TODO(kajo): figure out how we're going to do migrations or whatever
-# FIXME(kajo): do we even need an id here lol
 """
 CREATE TABLE blacklist (
-    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    role_id INTEGER UNIQUE NOT NULL
+	role_name TEXT NOT NULL,
 );
 """
 
@@ -19,22 +18,12 @@ class BlacklistDAO(BaseDAO):
         BaseDAO.__init__(self, db)
         self.logger = logging.getLogger(__name__)
 
-    def add(self, model: BlacklistRole):
-        self.write("INSERT INTO blacklist (role_id) VALUES(?);", (model.id,))
+    def add(self, model: BlacklistRole):    
+        self.write("INSERT INTO blacklist (role_name) VALUES(?);", (model.name,))
+
+    def remove(self, model: BlacklistRole):
+        self.write("DELETE FROM blacklist WHERE role_name=?", (model.name,))
 
     def get_all(self) -> list[BlacklistRole]:
-        return list(
-            map(
-                lambda i: models.blacklist.from_database(i),
-                self.fetch_all("SELECT * FROM blacklist;"),
-            )
-        )
+        return list(map(lambda x: BlacklistRole(x[0]),self.fetch_all("SELECT * FROM blacklist;"))) # fetch_all returns [('streamer',)] for some reason
 
-    # def newBlackList(self, blacklist: BlackList):
-    #     res = self.fetch_one("SELECT * FROM blacklists WHERE role_name = ? AND role_id = ?;", (blacklist.name, blacklist.id))
-    #     if res:
-    #         self.logger.warn(f"role {blacklist.name} already exists: {res}")
-    #         return
-
-    #     self.logger.log("inserting")
-    #     self.execute("INSERT INTO blacklists (role_name, role_id) VALUES(?, ?);", (blacklist.name, blacklist.id))

@@ -1,8 +1,8 @@
+import logging
 import re
 import discord
 from discord.ext.commands import Bot, Cog
 from base.config import Config
-import logging
 
 class AutoReact(Cog):
     def __init__(self, bot: Bot):
@@ -22,7 +22,7 @@ class AutoReact(Cog):
                 continue
 
             await message.add_reaction(emoji)
-            self.logger.info(f"reacted with {emoji} to a message by {message.author.name}")
+            self.logger.info(f"reacted with {emoji} to: a message by {message.author.name}")
 
 
 async def setup(bot: Bot):

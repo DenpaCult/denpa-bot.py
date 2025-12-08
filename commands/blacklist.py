@@ -1,6 +1,7 @@
 from discord import Role
 from discord.ext import commands
-from database import db
+from base.config import Config
+from base.database import db
 from dao.blacklist_dao import BlacklistDAO
 from models.blacklist import BlacklistRole
 
@@ -9,49 +10,55 @@ class Blacklist(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.dao = BlacklistDAO(db)
+        self.config = Config.read_config()
 
-    @commands.command()
+    @commands.command(aliases=['bl'])
+    @commands.has_permissions(administrator=True, manage_roles=True)
     async def blacklist(self, ctx: commands.Context, action: str, *args: str):
-        if not ctx.guild:
-            await ctx.send("this command can only be used in a guild")
+        if not action:
             return
 
-        match action.strip():
+        from discord import Embed
+
+        action = action.strip()
+        msg = f"{self.config['emoji']['error']} | Command error"
+        
+        embed = Embed(color=0x0099ff, description=" ")
+        match action:
             case "list":
-                # TODO(kajo): surely the two list creations are unnecessary
-                ids = list(map(lambda x: x.id, self.dao.get_all()))
-                role_names = list(
-                    map(
-                        lambda x: x.name, filter(lambda r: r.id in ids, ctx.guild.roles)
-                    )
-                )
+                blacklisted = ", ".join(set(map(lambda x: x.name, self.dao.get_all())))
 
-                await ctx.send((f"{role_names}"))
-                return
+                msg = f"{blacklisted}"
 
-            case "add":
+            case "add"|"remove":
                 role = args[0]
                 roles = list(filter(lambda x: x.name == role, ctx.guild.roles))
 
                 match len(roles):
                     case 0:
-                        await ctx.send(f"no role with name '{role}' exists'")
-                        return
+                        msg = ctx.send(f"no role with name '{role}' exists'")
                     case 1:
                         target: Role = roles[0]
-                        self.dao.add(BlacklistRole(target.id))
-                        await ctx.send(f"added {role} to the blacklist")
-                        return
+                        if (action == "add"):
+                            self.dao.add(BlacklistRole.from_role(target))
+                            msg = f"added {role} to the blacklist"
+                        else:
+                            self.dao.remove(BlacklistRole.from_role(target))
+                            msg = f"removed {role} from the blacklist"
                     case _:
-                        await ctx.send(f"expected 0 or 1 roles, found {len(roles)}")
-                        return
+                        msg = f"expected 0 or 1 roles, found {len(roles)}"
 
-            case "remove":
-                await ctx.send("blacklist remove")
             case "help":
-                await ctx.send("TODO(kajo): show help menu here")
+                msg = """
+                list: Show blacklisted roles
+                add: blacklist a role
+                remove: remove a blacklisted role
+                """
             case _:
-                await ctx.send("invalid option TODO(kajo): write better message")
+                msg = "invalid option TODO(kajo): write better message"
+
+        embed.add_field(name="Blacklist", value=msg)
+        await ctx.send(embed=embed)
 
 
 async def setup(bot):
