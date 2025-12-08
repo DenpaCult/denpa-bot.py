@@ -17,8 +17,8 @@ class AutoRole(Cog):
             filter(lambda x: x.id in self.config["defaultRoles"], member.guild.roles),
         )
 
-        # TODO: Log action
         await member.add_roles(*role_ids)
+        self.logger.info(f"added default roles to member {member.name}")
 
 async def setup(bot: Bot):
     await bot.add_cog(AutoRole(bot))

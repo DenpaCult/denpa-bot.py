@@ -1,5 +1,6 @@
-from dao.dao import BaseDAO, Database
 import logging
+import models.blacklist
+from dao.dao import BaseDAO, Database
 from models.blacklist import BlacklistRole
 
 # FIXME(kajo): this isn't the responsibility of the DAO
@@ -24,7 +25,7 @@ class BlacklistDAO(BaseDAO):
     def get_all(self) -> list[BlacklistRole]:
         return list(
             map(
-                lambda i: BlacklistRole.from_database(i),
+                lambda i: models.blacklist.from_database(i),
                 self.fetch_all("SELECT * FROM blacklist;"),
             )
         )

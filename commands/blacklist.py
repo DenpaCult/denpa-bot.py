@@ -12,6 +12,10 @@ class Blacklist(commands.Cog):
 
     @commands.command()
     async def blacklist(self, ctx: commands.Context, action: str, *args: str):
+        if not ctx.guild:
+            await ctx.send("this command can only be used in a guild")
+            return
+
         match action.strip():
             case "list":
                 # TODO(kajo): surely the two list creations are unnecessary

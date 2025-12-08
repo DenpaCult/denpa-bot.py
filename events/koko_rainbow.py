@@ -1,5 +1,6 @@
 import asyncio
 import random
+import logging
 from discord.ext.commands import Bot, Cog
 from discord import Guild, Role, Colour
 from base.config import Config
@@ -9,8 +10,9 @@ class KokoRainbow(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
         self.config = Config.read_config()
+        self.logger = logging.getLogger(__name__)
 
-        self.task = None  # TODO: type this?
+        self.task: asyncio.Task | None = None  # TODO: type this?
 
     @Cog.listener()
     async def on_guild_available(self, guild: Guild):
@@ -19,7 +21,8 @@ class KokoRainbow(Cog):
         )
 
         if len(koko_role) != 1:
-            return  # FIXME: err about invariant being broken w/ koko role
+            self.logger.error("Invariant broken: koko role count is not 1")
+            return 
 
         self.task = asyncio.create_task(update_colour(koko_role[0]))
 

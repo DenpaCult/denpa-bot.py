@@ -22,7 +22,7 @@ class AutoReact(Cog):
                 continue
 
             await message.add_reaction(emoji)
-            self.logger.info(f"reacted with {emoji} to: a message by {message.author.name}")
+            self.logger.info(f"reacted with {emoji} to a message by {message.author.name}")
 
 
 async def setup(bot: Bot):

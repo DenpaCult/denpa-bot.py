@@ -1,5 +1,5 @@
 import sqlite3
-from config.config import config
+from base.config import Config
 
 
 class Database:
@@ -7,4 +7,4 @@ class Database:
         self.con = sqlite3.connect(path)
 
 
-db = Database(config.read_config()["sqlite_file"])
+db = Database(Config.read_config()["sqlite_file"])
