@@ -40,12 +40,14 @@ class role(commands.Cog):
                 if (args[0] == "remove"):
                     await ctx.author.remove_roles(found[0])
                     msg = f"{self.config['emoji']['denpabot']} | {ctx.author.display_name} is no longer in tune with {found[0].name}"
+
                 elif(args[0] in ["bl", "blacklist"]):
                     # TODO blacklist logic
                     pass
                 elif(args[0] in ["unbl", "unblacklist"]):
                     # TODO unblacklist logic
                     pass
+
                 elif (args[0] == "add"):
                     await ctx.author.add_roles(found[0])
                     msg = f"{self.config['emoji']['denpabot']} | {ctx.author.display_name} established connection with {found[0].name}"
