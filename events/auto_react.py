@@ -21,8 +21,8 @@ class AutoReact(Cog):
             if not pat.search(message.content):
                 continue
 
-            # TODO: log action here
             await message.add_reaction(emoji)
+            self.logger.info(f"reacted with {emoji} to: a message by {message.author.name}")
 
 
 async def setup(bot: Bot):

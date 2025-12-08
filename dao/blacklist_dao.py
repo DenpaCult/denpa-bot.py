@@ -15,7 +15,7 @@ CREATE TABLE blacklists (
 class BlackListDao(BaseDAO):
     def __init__(self, db: Database = Database("toromi.db")):
         BaseDAO.__init__(self, db)
-        self.logger = logging.getLogger()
+        self.logger = logging.getLogger(__name__)
 
     def newBlackList(self, blacklist: BlackList):
         res = self.fetch_one("SELECT * FROM blacklists WHERE role_name = ? AND role_id = ?;", (blacklist.name, blacklist.id))

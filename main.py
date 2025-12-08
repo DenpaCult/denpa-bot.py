@@ -51,9 +51,9 @@ async def load_extentions(folder: str):
             extension = f"{folder}.{filename[:-3]}"
             try:
                 await bot.load_extension(extension)
-                print(f"Loaded {extension}")
+                logger.info(f"Loaded {extension}")
             except Exception as e:
-                print(f"Failed to load {extension}: {e}")
+                logger.warning(f"Failed to load {extension}: {e}")
 
 
 @bot.event
