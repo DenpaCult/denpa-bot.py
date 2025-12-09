@@ -15,7 +15,7 @@ class Blacklist(commands.Cog):
 
     @commands.command(aliases=['bl'])
     @commands.has_permissions(administrator=True, manage_roles=True)
-    @is_in_guild
+    @is_in_guild()
     async def blacklist(self, ctx: commands.Context, action: str, *args: str):
         if not action:
             return
