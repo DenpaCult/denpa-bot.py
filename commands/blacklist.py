@@ -1,5 +1,6 @@
-from discord import Role
+from discord import Role, Embed
 from discord.ext import commands
+from base.checks import is_in_guild
 from base.config import Config
 from base.database import db
 from dao.blacklist_dao import BlacklistDAO
@@ -14,11 +15,11 @@ class Blacklist(commands.Cog):
 
     @commands.command(aliases=['bl'])
     @commands.has_permissions(administrator=True, manage_roles=True)
+    @is_in_guild
     async def blacklist(self, ctx: commands.Context, action: str, *args: str):
         if not action:
             return
 
-        from discord import Embed
 
         action = action.strip()
         msg = f"{self.config['emoji']['error']} | Command error"
@@ -26,17 +27,22 @@ class Blacklist(commands.Cog):
         embed = Embed(color=0x0099ff, description=" ")
         match action:
             case "list":
-                blacklisted = ", ".join(set(map(lambda x: x.name, self.dao.get_all())))
+                ids = list(map(lambda x: x.id, self.dao.get_all()))
+                role_names = list(
+                    map(
+                        lambda x: x.name, filter(lambda r: r.id in ids, ctx.guild.roles)
+                    )
+                )
 
-                msg = f"{blacklisted}"
+                msg = ', '.join(role_names)
 
             case "add"|"remove":
-                role = args[0]
+                role = " ".join(args)
                 roles = list(filter(lambda x: x.name == role, ctx.guild.roles))
 
                 match len(roles):
                     case 0:
-                        msg = ctx.send(f"no role with name '{role}' exists'")
+                        msg = f"no role with name '{role}' exists'"
                     case 1:
                         target: Role = roles[0]
                         if (action == "add"):

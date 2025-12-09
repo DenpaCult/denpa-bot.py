@@ -8,7 +8,7 @@ from models.blacklist import BlacklistRole
 # TODO(kajo): figure out how we're going to do migrations or whatever
 """
 CREATE TABLE blacklist (
-	role_name TEXT NOT NULL,
+	role_id INTEGER NOT NULL,
 );
 """
 
@@ -19,10 +19,10 @@ class BlacklistDAO(BaseDAO):
         self.logger = logging.getLogger(__name__)
 
     def add(self, model: BlacklistRole):    
-        self.write("INSERT INTO blacklist (role_name) VALUES(?);", (model.name,))
+        self.write("INSERT INTO blacklist (role_id) VALUES(?);", (model.id,))
 
     def remove(self, model: BlacklistRole):
-        self.write("DELETE FROM blacklist WHERE role_name=?", (model.name,))
+        self.write("DELETE FROM blacklist WHERE role_id=?", (model.id,))
 
     def get_all(self) -> list[BlacklistRole]:
         return list(map(lambda x: BlacklistRole(x[0]),self.fetch_all("SELECT * FROM blacklist;"))) # fetch_all returns [('streamer',)] for some reason

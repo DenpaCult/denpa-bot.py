@@ -8,12 +8,11 @@ class BlacklistRole:
 
     @classmethod
     def from_role(cls, role: Role):
-        return cls(role.name)
+        return cls(role.id)
 
     @classmethod
-    def from_database(cls, item: tuple[str,str]):
+    def from_database(cls, item: tuple[int,int]):
         return cls(item[1])
     
-    def __init__(self, name: str):
-        self.name: str = name
-    
+    def __init__(self, id: int):
+        self.id: int = id

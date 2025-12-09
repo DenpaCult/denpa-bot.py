@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-cfg = Config.read_config("test.json")
+cfg = Config.read_config("config.json")
 bot = commands.Bot(command_prefix=cfg["prefix"], intents=discord.Intents.all())
 
 
