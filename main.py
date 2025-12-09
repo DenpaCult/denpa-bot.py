@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 cfg = Config.read_config("config.json")
-bot = commands.Bot(command_prefix=cfg["prefix"], intents=discord.Intents.all())
+bot = commands.Bot(command_prefix=cfg["prefix"], intents=discord.Intents.all(), max_messages=1000)
 
 
 async def load_extentions(folder: str):

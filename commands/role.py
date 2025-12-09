@@ -30,8 +30,6 @@ class role(commands.Cog):
         if(len(args) == 0):
             roles_per_page = 5
             pages = math.ceil(len(roles) / roles_per_page)
-            self.logger.info(f"{pages}, {len(roles)}, {roles_per_page}")
-            self.logger.info(f"{roles}")
             for i in range(pages):
 
                 embed = Embed(color=0x0099ff, description=" ")
