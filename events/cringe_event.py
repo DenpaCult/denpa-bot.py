@@ -24,7 +24,7 @@ class CringeEvent(Cog):
         """
         try:
             cringe_emoji = self.config["emoji"]["cringe"]
-            reaction_emoji = payload.emoji.__str__()
+            reaction_emoji = str(payload.emoji)
             if reaction_emoji != cringe_emoji:
                 return
             
@@ -32,12 +32,12 @@ class CringeEvent(Cog):
             message = await channel.fetch_message(payload.message_id)
             
             if message.author.id == payload.member.id:
-                await message.remove_reaction(reaction_emoji, message.author)
+                await message.remove_reaction(reaction_emoji, message.author) # same user can't react
                 return
             
             cringe_config = self.config["defaultCringeConfig"]
             
-            if (datetime.now(tz=timezone.utc) - message.created_at).seconds > cringe_config["expireTime"] * 60:
+            if (datetime.now(tz=timezone.utc) - message.created_at).seconds > cringe_config["expireTime"] * 60: # created_at returns time in utc
                 return 
             
             already_cringed = self.dao.get_one(Cringe.from_message(message))
