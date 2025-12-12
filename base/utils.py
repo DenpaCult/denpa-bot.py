@@ -1,12 +1,15 @@
 from datetime import datetime, timezone
 from discord import Embed, Message
 import re
+from discord.ext.commands.bot import logging
 import requests
 
-URL_REGEX = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)"
+URL_REGEX = r"https?://(?:www\.)?(?:[a-zA-Z0-9@:%._+~#=]{1,256}\.)(?:[a-zA-Z0-9()]{1,6})\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)"
+
 TWITTER_REGEX = r"https?:\/\/(?:www\.)?(twitter|x|fxtwitter|vxtwitter|fixupx|girlcockx)\.com"
 
-def parse_message_into_embed(message: Message, color: int, author: tuple[str,str], footer: str):
+
+def parse_message_into_embed(message: Message, color: int, author: tuple[str,str], footer: str) -> list[Embed]:
     """
     receives a message
     creates a main embed with color, author[name, icon_url], footer
@@ -30,23 +33,17 @@ def parse_message_into_embed(message: Message, color: int, author: tuple[str,str
     main_embed.set_footer(text=footer)
 
     if message.content:
-        main_embed.add_field(name="Message", value=message.content)
+        main_embed.add_field(name="Message", value=message.content, inline=False)
 
-    main_embed.add_field(name="Link", value=message.jump_url)
+    main_embed.add_field(name="Link", value=message.jump_url, inline=False)
 
     hyperlinks = re.findall(URL_REGEX, message.content)
-    attachment = message.attachments[0]
 
-    if attachment:
-        main_embed.set_image(url=attachment.url)
-    elif hyperlinks:
-        main_embed.set_image(url=hyperlinks[0])
-        hyperlinks.pop(0)
+
+    if message.attachments:
+        main_embed.set_image(url=message.attachments[0].url)
 
     embeds = [main_embed]
-
-    for link in hyperlinks:
-        embeds.append(link)
 
     media_urls = fetch_media_url(hyperlinks)
 
@@ -58,7 +55,6 @@ def parse_message_into_embed(message: Message, color: int, author: tuple[str,str
         embeds.append(_embed)
 
     return embeds
-        
 
 
 def fetch_media_url(hyperlinks: list[str]) -> list[str]:
@@ -72,11 +68,10 @@ def fetch_media_url(hyperlinks: list[str]) -> list[str]:
             continue
 
         link = re.sub(TWITTER_REGEX, "https://api.fxtwitter.com", link)
-
         _json = requests.get(link).json()
 
         try:
-            photo_urls += list(map(lambda x: x["url"], _json["tweet"]["media"]["photos"]))
+            photo_urls += list(map(lambda x: x["url"], _json["tweet"]["media"]["all"]))
         except:
             pass
 
