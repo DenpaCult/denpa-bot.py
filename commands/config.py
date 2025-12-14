@@ -7,10 +7,11 @@ from base.config import Config
 class Config_cmd(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self._config = Config.read_config()
         self.logger = logging.getLogger(__name__)
 
     @commands.command(aliases=["con", "cfg"])
-    @commands.has_permissions(administrator=True)
+    # @commands.has_permissions(administrator=True)
     @commands.guild_only()
     async def config(self, ctx, action: str, *args):
         """
@@ -18,12 +19,11 @@ class Config_cmd(commands.Cog):
         """
         match(action):
             case "help":
-                await ctx.send(embed=Config_cmd.help_menu(args))
+                await ctx.send(embed=self.help_menu(args))
             case "cringe":
-                await ctx.send(embed=Config_cmd.update_cringe(args))
+                await ctx.send(embed=self.update_cringe(args))
 
-    @staticmethod
-    def help_menu(args) -> Embed:
+    def help_menu(self, args) -> Embed:
         if args:
             args = args[0]
 
@@ -33,27 +33,21 @@ class Config_cmd(commands.Cog):
                 _embed.description = "use with args below to show more info"
                 _embed.add_field(name="cringe", value="", inline=False)
             case "cringe":
-                _embed.add_field(name="threshold",value="",inline=False)
-                _embed.add_field(name="timeouttime",value="",inline=False)
-                _embed.add_field(name="expiretime",value="",inline=False)
-                _embed.add_field(name="channelid",value="",inline=False)
+                for name in self._config["defaultCringeConfig"].keys():
+                    _embed.add_field(name=name,value="",inline=False)
 
         return _embed
 
-    @staticmethod
-    def update_cringe(args):
+    def update_cringe(self, args) -> Embed:
         _embed = Embed(color=0x0099ff, description="Invalid arguments")
-        _config = Config.read_config()
-        logger = logging.getLogger(__name__)
-        logger.info(len(args))
         if len(args) < 2:
             return _embed
 
-        if args[0] in ["threshold", "timeouttime", "expiretime", "channelid"]:
+        if args[0] in self._config["defaultCringeConfig"].keys():
             try:
                 _val = int(args[1])
-                _config["defaultCringeConfig"][args[0]] = _val
-                Config.update_config(_config)
+                self._config["defaultCringeConfig"][args[0]] = _val
+                Config.update_config(self._config)
                 _embed.description = f"updated cringe {args[0]} to {_val}"
                 return _embed
             except:
