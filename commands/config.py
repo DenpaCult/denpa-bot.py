@@ -11,7 +11,7 @@ class Config_cmd(commands.Cog):
         self.logger = logging.getLogger(__name__)
 
     @commands.command(aliases=["con", "cfg"])
-    # @commands.has_permissions(administrator=True)
+    @commands.has_permissions(administrator=True)
     @commands.guild_only()
     async def config(self, ctx, action: str, *args):
         """
