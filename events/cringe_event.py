@@ -34,13 +34,12 @@ class CringeEvent(Cog):
             channel = await self.bot.fetch_channel(payload.channel_id)
             message = await channel.fetch_message(payload.message_id)
             
-            if False and message.author.id == payload.member.id:
+            if message.author.id == payload.member.id:
                 await message.remove_reaction(reaction_emoji, message.author) # same user can't react
                 return
             
-            cringe_config = self.config["defaultCringeConfig"]
             
-            if (datetime.now(tz=timezone.utc) - message.created_at).seconds > cringe_config["expireTime"] * 60: # created_at returns time in utc
+            if (datetime.now(tz=timezone.utc) - message.created_at).seconds > self.config["defaultCringeConfig"]["expireTime"] * 60: # created_at returns time in utc
                 return 
             
             already_cringed = self.dao.get_one(Cringe.from_message(message))
@@ -49,14 +48,15 @@ class CringeEvent(Cog):
             
             cringe_count = list(filter(lambda x: str(x.emoji) == cringe_emoji, message.reactions))[0].count
             
-            if cringe_count >= cringe_config["threshold"]:
-                # await message.author.timeout(timedelta(minutes=cringe_config["timeoutTime"]))
+            self.logger.info(self.config["defaultCringeConfig"])
+            if cringe_count >= self.config["defaultCringeConfig"]["threshold"]:
+                await message.author.timeout(timedelta(minutes=cringe_config["timeoutTime"]))
                 self.dao.add(Cringe.from_message(message))
-                self.logger.info(f"{message.author} has been timed out for {cringe_config['timeoutTime']} minutes")
+                self.logger.info(f"{message.author} has been timed out for {self.config['defaultCringeConfig']['timeoutTime']} minutes")
 
-            _embeds = parse_message_into_embed(message, 0xe8b693, (f"{message.author.name} posted cringe", message.author.display_avatar.url), f"ID: {message.id}")
+                _embeds = parse_message_into_embed(message, 0xe8b693, (f"{message.author.name} posted cringe", message.author.display_avatar.url), f"ID: {message.id}")
 
-            await channel.send(embeds=_embeds)
+                await channel.send(embeds=_embeds)
         except Exception as e:
             self.logger.error(traceback.format_exc())
             
