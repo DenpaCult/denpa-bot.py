@@ -2,16 +2,9 @@ from discord import Message
 
 class Wood:
     """
-    Wood object containing the message id of the message that has been reacted to
+    Wood object containing the user_id of cummer and cummee
     """
-
-    @classmethod
-    def from_message(cls, message: Message):
-        return cls(message.id)
-
-    @classmethod
-    def from_database(cls, item: tuple[int,int]):
-        return cls(item[1])
     
-    def __init__(self, id: int):
-        self.id: int = id
+    def __init__(self, cummed_id: int, cummee_id: int):
+        self.cummed_id: int = cummed_id
+        self.cummee_id: int = cummee_id
