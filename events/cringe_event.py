@@ -1,11 +1,8 @@
 from datetime import timedelta, datetime, timezone
 import logging
 import traceback
-from types import TracebackType
-from typing import Union
 from discord.ext.commands import Bot, Cog
-from discord import RawReactionActionEvent, Reaction, Member
-from base.checks import is_in_guild
+from discord import RawReactionActionEvent
 from base.config import Config
 from dao.cringe_dao import CringeDAO
 from models.cringe import Cringe
