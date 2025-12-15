@@ -17,38 +17,43 @@ class Config_cmd(commands.Cog):
         """
         directly changes config.json
         """
-        match(action):
+        match(action.lower()):
             case "help":
                 await ctx.send(embed=self.help_menu(args))
             case "cringe":
-                await ctx.send(embed=self.update_cringe(args))
+                await ctx.send(embed=self.update_val("Cringe", args))
+            case "wood":
+                await ctx.send(embed=self.update_val("Wood", args))
 
     def help_menu(self, args) -> Embed:
         if args:
             args = args[0]
+        else:
+            args = ""
 
         _embed = Embed(color=0x0099ff, description=" ", title="admin config menu")
-        match(args):
-            case ():
+        match(args.lower()):
+            case "":
                 _embed.description = "use with args below to show more info"
                 _embed.add_field(name="cringe", value="", inline=False)
-            case "cringe":
-                for name in self._config["defaultCringeConfig"].keys():
+                _embed.add_field(name="wood", value="", inline=False)
+            case "cringe"|"wood":
+                for name in self._config[f"default{args.lower().capitalize()}Config"].keys():
                     _embed.add_field(name=name,value="",inline=False)
 
         return _embed
 
-    def update_cringe(self, args) -> Embed:
+    def update_val(self, name, args) -> Embed:
         _embed = Embed(color=0x0099ff, description="Invalid arguments")
         if len(args) < 2:
             return _embed
 
-        if args[0] in self._config["defaultCringeConfig"].keys():
+        if args[0] in self._config[f"default{name}Config"].keys():
             try:
                 _val = int(args[1])
-                self._config["defaultCringeConfig"][args[0]] = _val
+                self._config[f"default{name}Config"][args[0]] = _val
                 Config.update_config(self._config)
-                _embed.description = f"updated cringe {args[0]} to {_val}"
+                _embed.description = f"updated {name} {args[0]} to {_val}"
                 return _embed
             except:
                 return _embed
