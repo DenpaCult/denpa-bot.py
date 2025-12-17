@@ -33,14 +33,28 @@ class CumDAO(BaseDAO):
         return len(list(map(lambda x: (x[0],x[1]) , data)))
 
     def get_most_cummed_on_user(self, user_id) -> int | None: # person the user has cummed on the most, returns user_id the name should be fetched later
-        data = self.fetch_all("SELECT * FROM cum WHERE cummer_id=?", (user_id,))
-        userid = max(data, key=lambda x: list(map(lambda y: y[1], data)).count(x[1]))[1] if data else None # maximum count of cummed_on_id
-        return userid
+        data = self.fetch_all("""
+                               SELECT cummed_on_id
+                               FROM cum
+                               WHERE cummer_id == ?
+                               GROUP BY cummed_on_id
+                               ORDER BY COUNT(cummed_on_id) DESC
+                               LIMIT 1;
+                              """,
+                              (user_id,))[0][0]
+        return data
 
     def get_most_cummer_on_you(self, user_id) -> int | None: # person that has cummed on the user the most, returns user_id the name should be fetched later
-        data = self.fetch_all("SELECT * FROM cum WHERE cummed_on_id=?", (user_id,))
-        userid = max(data, key=lambda x: list(map(lambda y: y[0], data)).count(x[0]))[0] if data else None # maximum count of cummer_id
-        return userid
+        data = self.fetch_all("""
+                               SELECT cummer_id
+                               FROM cum
+                               WHERE cummed_on_id == ?
+                               GROUP BY cummer_id
+                               ORDER BY COUNT(cummer_id) DESC
+                               LIMIT 1;
+                              """,
+                              (user_id,))[0][0]
+        return data
 
     # is this gonna be required
     # def get_cummed_on_user_count(self, user_id: int, member_id: int): # How many times the user has cummed on a specific member
