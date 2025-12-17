@@ -41,7 +41,8 @@ class CumDAO(BaseDAO):
                                ORDER BY COUNT(cummed_on_id) DESC
                                LIMIT 1;
                               """,
-                              (user_id,))[0][0]
+                              (user_id,))
+        data = data[0][0] if data else None
         return data
 
     def get_most_cummer_on_you(self, user_id) -> int | None: # person that has cummed on the user the most, returns user_id the name should be fetched later
@@ -53,7 +54,8 @@ class CumDAO(BaseDAO):
                                ORDER BY COUNT(cummer_id) DESC
                                LIMIT 1;
                               """,
-                              (user_id,))[0][0]
+                              (user_id,))
+        data = data[0][0] if data else None
         return data
 
     # is this gonna be required
