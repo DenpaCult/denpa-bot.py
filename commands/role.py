@@ -1,23 +1,21 @@
 import logging
 from discord.ext import commands
+from discord import Embed
 from base.config import Config
 import math
-from dao import blacklist_dao
 from dao.blacklist_dao import BlacklistDAO
-from models.blacklist import BlacklistRole
 from base.checks import is_in_guild
 
 class role(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.read_config()
-        self.blacklist_dao = blacklist_dao.BlacklistDAO()
+        self.blacklist_dao = BlacklistDAO()
         self.logger = logging.getLogger(__name__)
 
     @commands.command(aliases=["broadcast", "syntonize", "roles", "role"])
     @is_in_guild()
     async def Role(self, ctx: commands.Context, *args):
-        from discord import Embed, Permissions
         
         roles = list(map(lambda x: x.name,ctx.guild.roles))
 
