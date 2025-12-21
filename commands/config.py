@@ -38,7 +38,7 @@ class Config_cmd(commands.Cog):
                 _embed.add_field(name="cringe", value="", inline=False)
                 _embed.add_field(name="wood", value="", inline=False)
             case "cringe"|"wood":
-                for name in self._config[f"default{args.lower().capitalize()}Config"].keys():
+                for name in self._config[args.lower().capitalize()].keys():
                     _embed.add_field(name=name,value="",inline=False)
 
         return _embed
@@ -48,10 +48,10 @@ class Config_cmd(commands.Cog):
         if len(args) < 2:
             return _embed
 
-        if args[0] in self._config[f"default{name}Config"].keys():
+        if args[0] in self._config[name].keys():
             try:
                 _val = int(args[1])
-                self._config[f"default{name}Config"][args[0]] = _val
+                self._config[name][args[0]] = _val
                 Config.update_config(self._config)
                 _embed.description = f"updated {name} {args[0]} to {_val}"
                 return _embed

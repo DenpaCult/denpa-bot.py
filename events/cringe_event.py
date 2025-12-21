@@ -45,8 +45,7 @@ class CringeEvent(Cog):
             
             cringe_count = list(filter(lambda x: str(x.emoji) == cringe_emoji, message.reactions))[0].count
             
-            self.logger.info(self.config["defaultCringeConfig"])
-            if cringe_count >= self.config["defaultCringeConfig"]["threshold"]:
+            if cringe_count >= self.config["Cringe"]["threshold"]:
                 await message.author.timeout(timedelta(minutes=cringe_config["timeoutTime"]))
                 self.dao.add(Cringe.from_message(message))
                 self.logger.info(f"{message.author} has been timed out for {self.config['defaultCringeConfig']['timeoutTime']} minutes")

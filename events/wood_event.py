@@ -38,13 +38,13 @@ class WoodEvent(Cog):
             
             wood_count = list(filter(lambda x: str(x.emoji) == wood_emoji, message.reactions))[0].count
             
-            if wood_count >= self.config["defaultWoodConfig"]["threshold"]:
+            if wood_count >= self.config["Wood"]["threshold"]:
                 self.dao.add(Wood.from_message(message))
                 self.logger.info(f"{message.id} has been wooded")
 
                 _embeds = parse_message_into_embed(message, 0xe8b693, (f"{message.author.name} | 🦈 tbh", message.author.display_avatar.url), f"ID: {message.id}")
 
-                wood_chan = await self.bot.fetch_channel(self.config["defaultWoodConfig"]["channelId"])
+                wood_chan = await self.bot.fetch_channel(self.config["Wood"]["channelId"])
                 await wood_chan.send(embeds=_embeds)
         except Exception as e:
             self.logger.error(traceback.format_exc())
