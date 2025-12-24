@@ -1,17 +1,11 @@
 import json
 import logging
+from operator import is_
 import re
-import subprocess
-import discord
 from discord.ext import commands
-from discord.voice_client import VoiceClient
 
-from base import utils
-from models.music_player import MusicPlayerSingleton
+from models.music_player import YOUTUBE_PLAYLIST_REGEX, MusicPlayerSingleton
 from base.config import Config
-
-YOUTUBE_REGEX = "^https://(?:www.)?youtube.com/.+$"
-URL_REGEX = utils.URL_REGEX
 
 class PlayCommand(commands.Cog):
     def __init__(self, bot):
@@ -32,9 +26,17 @@ class PlayCommand(commands.Cog):
         if not ctx.guild:
             return
 
+        args = " ".join(args)
+
         music_player = MusicPlayerSingleton.get_guild_instance(ctx.guild, ctx.bot)
         await music_player.connect(ctx.author.voice.channel)
-        await music_player.add_song(" ".join(args))
+
+        
+        is_youtube_playlist = bool(re.match(YOUTUBE_PLAYLIST_REGEX, args))
+        if is_youtube_playlist:
+            await music_player.add_playlist(args)
+        else:
+            await music_player.add_song(args)
         self.logger.info(music_player.queue)
 
 
