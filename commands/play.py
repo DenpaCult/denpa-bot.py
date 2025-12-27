@@ -25,22 +25,23 @@ class PlayCommand(commands.Cog):
         if not ctx.guild:
             return
 
-        if not ctx.author.voice): # stupid python warnings if guild_only is on the author is a member not a user
+        if not ctx.author.voice: # stupid python warnings if guild_only is on the author is a member not a user
             await ctx.send(embed=Embed(color=0xffffff, title="You are not connected to a voice channel"))
             return
 
         args = " ".join(args)
 
         music_player = MusicPlayerSingleton.get_guild_instance(ctx.guild, ctx.bot)
-        if not music_player.is_connected():
+        is_connected = await music_player.is_connected()
+        if not is_connected:
             await music_player.connect(ctx.author.voice.channel)
 
         
         is_youtube_playlist = bool(re.match(YOUTUBE_PLAYLIST_REGEX, args))
         if is_youtube_playlist:
-            await music_player.add_playlist(args)
+            await music_player.add_playlist(args, ctx.author.name)
         else:
-            await music_player.add_song(args)
+            await music_player.add_song(args, ctx.author.name)
         self.logger.info(music_player.queue)
 
 
