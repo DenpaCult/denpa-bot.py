@@ -12,7 +12,7 @@ class JoinCommand(commands.Cog):
 
     @commands.command(aliases=["move"])
     @commands.guild_only()
-    async def leave(self, ctx: commands.Context):
+    async def join(self, ctx: commands.Context):
         """
         join vc
         """
