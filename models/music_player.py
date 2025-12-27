@@ -290,7 +290,7 @@ class MusicPlayerSingleton:
 
 
 
-
+    """
     async def _yt_dlp_url(self, query: str, *yt_dlp_args) -> tuple[str, str, str]:
         process = await asyncio.create_subprocess_exec(
             "yt-dlp",
@@ -336,7 +336,7 @@ class MusicPlayerSingleton:
     
         data = json.loads(stdout.decode())
         return [(e["title"], e["url"]) for e in data["entries"]]
-
+    """
 
     async def history(self) -> Embed:
         _embed = Embed(
@@ -344,7 +344,7 @@ class MusicPlayerSingleton:
                 title="Song History", 
                 description=(
                     "\n".join(
-                        [f"{i}: `{v[0]}`" for i, v in (self.hist.reveresed())][1:]
+                        [f"{i}: `{v.metadata.title}`" for i, v in enumerate(self.hist.reveresed())][1:]
                         )
                     )
                 )
