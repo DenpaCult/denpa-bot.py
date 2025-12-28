@@ -7,16 +7,16 @@ from dao.blacklist_dao import BlacklistDAO
 from base.checks import is_in_guild
 from base.database import db
 
-class role(commands.Cog):
+class Role(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.read_config()
         self.blacklist_dao = BlacklistDAO(db)
         self.logger = logging.getLogger(__name__)
 
-    @commands.command(aliases=["broadcast", "syntonize", "roles", "role"])
+    @commands.command(aliases=["broadcast", "syntonize", "roles"])
     @is_in_guild()
-    async def Role(self, ctx: commands.Context, *args):
+    async def role(self, ctx: commands.Context, *args):
         
         roles = list(map(lambda x: x.name,ctx.guild.roles))
 
@@ -61,4 +61,4 @@ class role(commands.Cog):
 
 
 async def setup(bot):
-    await bot.add_cog(role(bot))
+    await bot.add_cog(Role(bot))
