@@ -1,63 +1,105 @@
 import logging
-from discord.ext import commands
-from discord import Embed
-from base.config import Config
 import math
+from discord import Embed, Member, Role as DiscordRole
+from discord.ext import commands
 from dao.blacklist_dao import BlacklistDAO
+from base.config import Config
 from base.checks import is_in_guild
+from base.database import db
 
-class role(commands.Cog):
+
+class Role(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.read_config()
-        self.blacklist_dao = BlacklistDAO()
-        self.logger = logging.getLogger(__name__)
+        self.blacklist_dao = BlacklistDAO(db)
 
-    @commands.command(aliases=["broadcast", "syntonize", "roles", "role"])
+    @property
+    def logger(self):
+        return logging.getLogger(__name__)
+
+    @commands.command(aliases=["broadcast", "syntonize", "roles"])
     @is_in_guild()
-    async def Role(self, ctx: commands.Context, *args):
-        
-        roles = list(map(lambda x: x.name,ctx.guild.roles))
+    async def role(self, ctx: commands.Context, *args):
+        if not ctx.guild or not isinstance(ctx.author, Member):
+            self.logger.error(f";;role called outside of guild by {ctx.author.name}")
+            return
 
-        has_permission = ctx.author.guild_permissions.administrator or ctx.author.guild_permissions.manage_roles
-        bl_ids = list(map(lambda x: x.id ,self.blacklist_dao.get_all()))
-        bl_names = list(map(lambda x: x.name, filter(lambda x: x.id in bl_ids, ctx.guild.roles)))
-        roles = list(filter(lambda x: x not in bl_names, roles)) if not has_permission else roles
-    
+        permissions = ctx.author.guild_permissions
+        has_permission = permissions.administrator or permissions.manage_roles
 
-        if(len(args) == 0):
-            roles_per_page = 5
-            pages = math.ceil(len(roles) / roles_per_page)
-            for i in range(pages):
+        bl_ids = map(lambda r: r.id, self.blacklist_dao.get_all())
+        roles = filter(
+            lambda r: (r.id not in bl_ids) or has_permission, ctx.guild.roles
+        )
 
-                embed = Embed(color=0x0099ff, description=" ")
-                msg = ', '.join(roles[i*roles_per_page:i*roles_per_page + roles_per_page])
-                embed.add_field(name="Roles", value=msg)
+        emoji = self.config["emoji"]["denpabot"]
+        emoji_err = self.config["emoji"]["error"]
+        embed = Embed(color=0x0099FF)
+
+        match len(args):
+            case 0:
+                await list_roles(ctx, list(roles)[1:])  # skip @everyone role
+            case 1:
+                err = (
+                    "specify role name"
+                    if args[0] in ["add", "remove"]
+                    else "unknown subcommand. use 'add' or 'remove'."
+                )
+
+                embed.add_field(name="Roles", value=f"{emoji_err} | {err}")
                 await ctx.send(embed=embed)
+            case _:
+                role_name = " ".join(args[1:])
+                needle = list(filter(lambda x: x.name == role_name, roles))
 
-        elif(len(args) >= 2):
-            embed = Embed(color=0x0099ff, description=" ")
-            role_name = " ".join(args[1:])
-            found = list(filter(lambda x: x.name == role_name, ctx.guild.roles))
-            msg = f"{self.config['emoji']['error']} | Role doesn't exist"
-            if (found):
-                match (args[0]):
+                if len(needle) == 0:
+                    embed.add_field(
+                        name="Roles", value=f"{emoji_err} | role doesn't exist"
+                    )
+                    await ctx.send(embed=embed)
+                    return
+
+                match args[0]:
+                    case "add":
+                        await ctx.author.add_roles(needle[0])
+
+                        embed.add_field(
+                            name="Roles",
+                            value=f"{emoji} | {ctx.author.display_name} established connection with {needle[0].name}",
+                        )
+                        await ctx.send(embed=embed)
+
                     case "remove":
-                        if (not has_permission and found[0].name in bl_names):
-                            msg = f"{self.config['emoji']['error']} | Not allowed"
-                        else:
-                            await ctx.author.remove_roles(found[0])
-                            msg = f"{self.config['emoji']['denpabot']} | {ctx.author.display_name} is no longer in tune with {found[0].name}"
-                    case("add"):
-                        if (not has_permission and found[0].name in bl_names):
-                            msg = f"{self.config['emoji']['error']} | Not allowed"
-                        else:
-                            await ctx.author.add_roles(found[0])
-                            msg = f"{self.config['emoji']['denpabot']} | {ctx.author.display_name} established connection with {found[0].name}"
-            
-            embed.add_field(name="Roles", value=msg)
-            await ctx.send(embed=embed)
+                        await ctx.author.remove_roles(needle[0])
+
+                        embed.add_field(
+                            name="Roles",
+                            value=f"{emoji} | {ctx.author.display_name} is no longer in tune with {needle[0].name}",
+                        )
+                        await ctx.send(embed=embed)
+                    case _:
+                        embed.add_field(
+                            name="Roles",
+                            value=f"{emoji_err} | invalid subcommand. use 'add' or 'remove'.",
+                        )
+                        await ctx.send(embed=embed)
+
+
+# FIXME: a more elegant pagination solution maybe?
+async def list_roles(ctx: commands.Context, roles: list[DiscordRole]):
+    names_only = list(map(lambda x: x.name, roles))
+
+    page_count = 5
+    pages = math.ceil(len(roles) / page_count)
+
+    for i in range(pages):
+        msg = ", ".join(names_only[i * page_count : i * page_count + page_count])
+
+        builder = Embed(color=0x0099FF)  # FIXME: magic number
+        builder.add_field(name="Roles" if i == 0 else "", value=msg)
+        await ctx.send(embed=builder)
 
 
 async def setup(bot):
-    await bot.add_cog(role(bot))
+    await bot.add_cog(Role(bot))
