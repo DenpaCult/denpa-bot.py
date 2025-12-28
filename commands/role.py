@@ -13,22 +13,24 @@ class Role(commands.Cog):
         self.bot = bot
         self.config = Config.read_config()
         self.blacklist_dao = BlacklistDAO(db)
-        self.logger = logging.getLogger(__name__)
+
+    @property
+    def logger(self):
+        return logging.getLogger(__name__)
 
     @commands.command(aliases=["broadcast", "syntonize", "roles"])
     @is_in_guild()
     async def role(self, ctx: commands.Context, *args):
         if not ctx.guild or not isinstance(ctx.author, Member):
+            self.logger.error(f";;role called outside of guild by {ctx.author.name}")
             return
 
-        has_permission = (
-            ctx.author.guild_permissions.administrator
-            or ctx.author.guild_permissions.manage_roles
-        )
+        permissions = ctx.author.guild_permissions
+        has_permission = permissions.administrator or permissions.manage_roles
 
-        bl_ids = map(lambda x: x.id, self.blacklist_dao.get_all())
+        bl_ids = map(lambda r: r.id, self.blacklist_dao.get_all())
         roles = filter(
-            lambda x: (x.id not in bl_ids) or has_permission, ctx.guild.roles
+            lambda r: (r.id not in bl_ids) or has_permission, ctx.guild.roles
         )
 
         emoji = self.config["emoji"]["denpabot"]
@@ -42,7 +44,7 @@ class Role(commands.Cog):
                 err = (
                     "specify role name"
                     if args[0] in ["add", "remove"]
-                    else "invalid subcommand. use 'add' or 'remove'."
+                    else "unknown subcommand. use 'add' or 'remove'."
                 )
 
                 embed.add_field(name="Roles", value=f"{emoji_err} | {err}")
@@ -84,6 +86,7 @@ class Role(commands.Cog):
                         await ctx.send(embed=embed)
 
 
+# FIXME: a more elegant pagination solution maybe?
 async def list_roles(ctx: commands.Context, roles: list[DiscordRole]):
     names_only = list(map(lambda x: x.name, roles))
 
