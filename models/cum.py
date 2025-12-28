@@ -1,6 +1,4 @@
-from discord import Message
-
-class Cum:
+class Cumshot:
     """
     Cum object containing the id of cummer and cummee
     """
