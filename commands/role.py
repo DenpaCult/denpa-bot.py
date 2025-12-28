@@ -1,7 +1,7 @@
 import logging
 import math
 from discord.ext import commands
-from discord import Embed
+from discord import Embed, Member
 from base.config import Config
 from dao.blacklist_dao import BlacklistDAO
 from base.checks import is_in_guild
@@ -17,6 +17,8 @@ class Role(commands.Cog):
     @commands.command(aliases=["broadcast", "syntonize", "roles"])
     @is_in_guild()
     async def role(self, ctx: commands.Context, *args):
+        if not ctx.guild or not isinstance(ctx.author, Member):
+            return
         
         roles = list(map(lambda x: x.name,ctx.guild.roles))
 
