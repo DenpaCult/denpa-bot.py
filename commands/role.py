@@ -1,16 +1,17 @@
 import logging
+import math
 from discord.ext import commands
 from discord import Embed
 from base.config import Config
-import math
 from dao.blacklist_dao import BlacklistDAO
 from base.checks import is_in_guild
+from base.database import db
 
 class role(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.read_config()
-        self.blacklist_dao = BlacklistDAO()
+        self.blacklist_dao = BlacklistDAO(db)
         self.logger = logging.getLogger(__name__)
 
     @commands.command(aliases=["broadcast", "syntonize", "roles", "role"])
