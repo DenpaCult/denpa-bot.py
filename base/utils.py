@@ -57,13 +57,10 @@ def cringe_embed(message: Message) -> list[Embed]:
             main.set_image(url=img_urls[0])
             extra_img_urls = img_urls[1::]
 
-        case (False, True):
+        case (False, True) | (True, True):
             main.set_image(url=attachments[0])
             attachments = attachments[1::]
 
-        case (True, True):
-            main.set_image(url=attachments[0])
-            attachments = attachments[1::]
         case _:
             pass
 
@@ -106,6 +103,7 @@ def handle_link(url: str) -> list[str]:
             r = requests.get(api.geturl())
             if r.status_code != 200:
                 logger.error(f"{r.status_code} from {api.geturl()}")
+                return [url]
 
             obj = json.loads(r.text)
             urls: list[str] = list(

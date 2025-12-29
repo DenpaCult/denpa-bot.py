@@ -35,21 +35,15 @@ class CringeEvent(Cog):
         guild = await guild_name(self.bot, payload)
 
         msg_ch = await self.bot.fetch_channel(payload.channel_id)
-        if not isinstance(msg_ch, TextChannel):
-            return
+        assert isinstance(msg_ch, TextChannel)
 
         log_ch = await self.bot.fetch_channel(self.config["cringe"]["channelId"])
-        if not isinstance(log_ch, TextChannel):
-            self.logger.error(f"{guild}: config.cringe.channelId should be TextChannel")
-            return
+        assert isinstance(log_ch, TextChannel)
 
         message = await msg_ch.fetch_message(payload.message_id)
-        if not isinstance(message.author, Member):
-            return
+        assert isinstance(message.author, Member)
 
-        if payload.member is None:
-            self.logger.error("invariant: expected payload.member != None")
-            return
+        assert payload.member is not None
 
         if message.author.id == payload.member.id:
             await message.remove_reaction(reacted_emoji, message.author)

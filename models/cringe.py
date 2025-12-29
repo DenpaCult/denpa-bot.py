@@ -12,8 +12,7 @@ class CringeMessage:
 
     @classmethod
     def from_message(cls, message: Message):
-        if message.guild is None:
-            raise Exception("message.guild can NOT be None")
+        assert message.guild is not None
 
         return cls(message.id, message.author.id, message.guild.id)
 
