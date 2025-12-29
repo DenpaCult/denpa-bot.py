@@ -10,19 +10,23 @@ class KokoRainbow(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
         self.config = Config.read_config()
-        self.logger = logging.getLogger(__name__)
-        self.task: asyncio.Task | None = None # sorry i messed up your newer commits while trying to merge ~hoog
+        self.task: asyncio.Task | None = None
+
+    @property
+    def logger(self):
+        return logging.getLogger(__name__)
 
     @Cog.listener()
     async def on_guild_available(self, guild: Guild):
-        koko_role: list[Role] = list(
-            filter(lambda r: r.id == self.config["kokoRole"], guild.roles)
-        )
+        role_id: int = self.config["kokoRole"]
+        koko_role: list[Role] = list(filter(lambda r: r.id == role_id, guild.roles))
+        count = len(koko_role)
 
-        if len(koko_role) != 1:
-            self.logger.error("Invariant broken: koko role count is not 1")
+        if count != 1:
+            self.logger.error(f"[{guild.name}]: found {count} != 1 koko roles")
             return
 
+        self.logger.info(f"[{guild.name}]: koko role update_colour task start")
         self.task = asyncio.create_task(update_colour(koko_role[0]))
 
 
