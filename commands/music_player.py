@@ -458,7 +458,7 @@ class MusicPlaying(commands.Cog):
         else:
             return
 
-        if player.voice_client.is_paused():
+        if not player.voice_client.is_paused():
             await text_channel.send("Already playing.")
             return
 
