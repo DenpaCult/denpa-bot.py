@@ -43,3 +43,9 @@ class CringeDAO(BaseDAO):
 
     def get_one(self, model: CringeMessage) -> CringeMessage:
         return self.fetch_one("SELECT * FROM cringe WHERE message_id=?", (model.id,))
+
+    def count(self, guild_id: int, user_id: int) -> int:
+        return self.fetch_one(
+            "SELECT COUNT(*) FROM cringe WHERE guild_id=? AND author_id=?;",
+            (guild_id, user_id),
+        )[0]

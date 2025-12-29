@@ -26,6 +26,8 @@ class CringeEvent(Cog):
     # on_reaction_add doesnt get invoked when reacting to older messages before the bot was started
     @Cog.listener()
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+        assert payload.guild_id is not None
+
         target_emoji: str = self.config["emoji"]["cringe"]
         reacted_emoji = str(payload.emoji)
 
@@ -73,6 +75,9 @@ class CringeEvent(Cog):
 
         if cringe_count >= self.config["cringe"]["threshold"]:
             duration = timedelta(minutes=self.config["cringe"]["timeoutTime"])
+            offense_count = self.dao.count(payload.guild_id, message.author.id)
+
+            # TODO: escalate duration based on offense_count
 
             try:
                 await message.author.timeout(duration)
