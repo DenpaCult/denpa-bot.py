@@ -28,11 +28,11 @@
     },
     "cringe": {
         "threshold": 5,
-        "timeoutTime": 20,
-        "expireTime": 20,
+        "timeoutTime": 10,
+        "expireTime": 1200,
         "channelId": "1090086858635096086"
     },
-	"DeleteGuard": {
-		"channelId": "1090086858635096086"
-	}
+    "DeleteGuard": {
+        "channelId": "1090086858635096086"
+    }
 }

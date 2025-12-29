@@ -53,7 +53,7 @@ class CringeEvent(Cog):
             return
 
         elapsed = datetime.now(tz=timezone.utc) - message.created_at
-        expireTime = self.config["cringe"]["expireTime"] * 60
+        expireTime = self.config["cringe"]["expireTime"]
 
         if elapsed.seconds >= expireTime:  # created_at returns time in utc
             self.logger.info(
@@ -74,21 +74,23 @@ class CringeEvent(Cog):
         )[0].count
 
         if cringe_count >= self.config["cringe"]["threshold"]:
-            duration = timedelta(minutes=self.config["cringe"]["timeoutTime"])
-            offense_count = self.dao.count(payload.guild_id, message.author.id)
+            base = timedelta(seconds=self.config["cringe"]["timeoutTime"])
+            offences = self.dao.count(payload.guild_id, message.author.id)
 
-            # TODO: escalate duration based on offense_count
+            multiplier = max(offences - 5, 0)  # number of prior offences
+            total = base + timedelta(seconds=2 * multiplier)
 
             try:
-                await message.author.timeout(duration)
+                await message.author.timeout(total)
             except Exception as _:
                 self.logger.error(traceback.format_exc())
 
             self.dao.add(CringeMessage.from_message(message))
-            self.logger.info(
-                f"{guild}: timed out {message.author} for {duration.seconds}s"
-            )
 
+            self.logger.info(f"{guild}: {message.author}'s offense #{offences + 1}")
+            self.logger.info(
+                f"{guild}: timed out {message.author} for {total.seconds}s"
+            )
             await message.reply(
                 f"{message.author.name.upper()} WAS MUTED FOR THIS POST",
                 mention_author=True,
