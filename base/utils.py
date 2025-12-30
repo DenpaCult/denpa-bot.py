@@ -19,7 +19,10 @@ DUMMY_URL = "https://example.com"
 url_regex = re.compile(URL_REGEX)
 
 
-def cringe_embed(message: Message) -> list[Embed]:
+def msg_embed(message: Message, title: str) -> list[Embed]:
+    """
+    refers to a user's message. supports attachemnts and links to twitter + other direct links to images
+    """
     embeds: list[Embed] = []
 
     main = (
@@ -29,7 +32,7 @@ def cringe_embed(message: Message) -> list[Embed]:
             timestamp=datetime.now(tz=timezone.utc),
         )
         .set_author(
-            name=f"{message.author.name} posted cringe",
+            name=title,
             icon_url=message.author.display_avatar.url,
         )
         .set_footer(text=f"ID: {message.id}")
@@ -41,7 +44,7 @@ def cringe_embed(message: Message) -> list[Embed]:
     main.add_field(name="Link", value=message.jump_url)
 
     links: list[str] = url_regex.findall(message.content)
-    attachments: list[str] = list(map(lambda x: x.url, message.attachments))
+    attachments: list[str] = list(map(lambda x: x.url, message.attachments))  # ty:ignore[invalid-argument-type]
 
     # eg. a tweet with multiple images, only one can be the main image
     extra_img_urls = []

@@ -23,11 +23,7 @@ class CringeDAO(BaseDAO):
     def add(self, model: CringeMessage):
         self.write(
             "INSERT INTO cringe (message_id, author_id, guild_id) VALUES(?, ?, ?);",
-            (
-                model.id,
-                model.author_id,
-                model.guild_id,
-            ),
+            (model.id, model.author_id, model.guild_id),
         )
 
     def remove(self, model: CringeMessage):

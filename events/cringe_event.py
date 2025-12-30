@@ -8,7 +8,7 @@ from base.config import Config
 from base.database import db
 from dao.cringe_dao import CringeDAO
 from models.cringe import CringeMessage
-from base.utils import cringe_embed
+from base.utils import msg_embed
 
 # TODO: DRY. Make ;;wood and ;;cringe reuse a decent amt. of code
 
@@ -96,7 +96,9 @@ class CringeEvent(Cog):
                 mention_author=True,
             )
 
-            await log_ch.send(embeds=cringe_embed(message))
+            await log_ch.send(
+                embeds=msg_embed(message, f"{message.author.name} posted cringe")
+            )
 
 
 async def setup(bot: Bot):

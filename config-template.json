@@ -22,9 +22,9 @@
         987793980227985518
     ],
     "kokoRole": 856669801005711401,
-    "Wood": {
+    "wood": {
         "threshold": 5,
-        "channelId": "1090086858635096086"
+        "channelId": 1090086858635096086
     },
     "cringe": {
         "threshold": 5,
