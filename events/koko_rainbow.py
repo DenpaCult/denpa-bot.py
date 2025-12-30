@@ -24,8 +24,7 @@ class KokoRainbow(Cog):
 
         if count != 1:
             self.logger.error(f"[{guild.name}]: found {count} != 1 koko roles")
-            raise Exception("koko role count invalid")
-            # return
+            return
 
         self.logger.info(f"[{guild.name}]: koko role update_colour task start")
         self.task = asyncio.create_task(update_colour(koko_role[0]))
