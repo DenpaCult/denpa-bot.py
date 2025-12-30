@@ -15,13 +15,16 @@ class AutoRole(Cog):
 
     @Cog.listener()
     async def on_member_join(self, member: Member):
-        role_ids: map[Object] = map(
+        assert member.guild is not None
+
+        targets = self.config["defaultRoles"]
+        role_ids = map(
             lambda x: Object(x.id),
-            filter(lambda x: x.id in self.config["defaultRoles"], member.guild.roles),
+            filter(lambda x: x.id in targets, member.guild.roles),
         )
 
         await member.add_roles(*role_ids)
-        self.logger.info(f"added default roles to member {member.name}")
+        self.logger.info(f"[{member.guild.id}] auto-role for {member.name}")
 
 
 async def setup(bot: Bot):

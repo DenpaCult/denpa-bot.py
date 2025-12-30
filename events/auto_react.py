@@ -4,6 +4,7 @@ import discord
 from discord.ext.commands import Bot, Cog
 from base.config import Config
 
+
 class AutoReact(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -17,12 +18,16 @@ class AutoReact(Cog):
 
     @Cog.listener()
     async def on_message(self, message: discord.Message):
+        assert message.guild is not None
+
         for pat, emoji in self.pairs:
             if not pat.search(message.content):
                 continue
 
             await message.add_reaction(emoji)
-            self.logger.info(f"reacted with {emoji} to: a message by {message.author.name}")
+            self.logger.info(
+                f"[{message.guild.id}] reacted with {emoji} to {message.author.name}'s message"
+            )
 
 
 async def setup(bot: Bot):
