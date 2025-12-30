@@ -105,6 +105,7 @@ def handle_link(url: str) -> list[str]:
             | "twittpr.com"
             | "stupidpenisx.com"
             | "hitlerx.com"
+            | "xcancel.com"
         ):
             api = result._replace(netloc="api.fxtwitter.com")
 
