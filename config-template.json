@@ -32,7 +32,7 @@
         "expireTime": 1200,
         "channelId": 1090086858635096086
     },
-    "DeleteGuard": {
-        "channelId": "1090086858635096086"
+    "deleteGuard": {
+        "channelId": 1090086858635096086
     }
 }

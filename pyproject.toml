@@ -5,6 +5,7 @@ description = "porting the denpa bot to python"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "beautifulsoup4>=4.14.3",
     "discord-py>=2.6.4",
     "python-dotenv>=1.2.1",
     "requests>=2.32.5",

@@ -1,17 +1,20 @@
-from discord import User
+from dataclasses import dataclass
+from discord import Member
 
-class DeleteGuard:
+
+@dataclass
+class GuardedUser:
     """
     DeleteGuard object containing the user id of delete guarded members
     """
 
-    @classmethod
-    def from_user(cls, user: User):
-        return cls(user.id)
+    id: int
+    guild_id: int
 
     @classmethod
-    def from_database(cls, item: tuple[int,int]):
-        return cls(item[1])
-    
-    def __init__(self, id: int):
-        self.id: int = id
+    def from_member(cls, member: Member):
+        return cls(member.id, member.guild.id)
+
+    @classmethod
+    def from_database(cls, item: tuple[int, int]):
+        return cls(item[0], item[1])
