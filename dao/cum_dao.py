@@ -11,7 +11,7 @@ from models.cum import Cum
 
 
 class CumDAO(BaseDAO):
-    def __init__(self, db: Database = Database("toromi.db")):
+    def __init__(self, db: Database):
         BaseDAO.__init__(self, db)
         self.logger = logging.getLogger(__name__)
 
