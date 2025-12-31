@@ -1,6 +1,6 @@
 {
     "prefix": ";;",
-    "sqlite_file": "toromi.db",
+    "sqlite_file": "persist/toromi.db",
     "emoji": {
         "play": "\u25b6\ufe0f",
         "stop": "\u23f9\ufe0f",

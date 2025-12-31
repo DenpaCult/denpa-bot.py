@@ -21,7 +21,3 @@ env.bak/
 venv.bak/
 
 pyrightconfig.json
-
-*.db*
-
-config.json

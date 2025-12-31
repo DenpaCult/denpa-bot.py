@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from discord import Embed
 from discord.ext import commands
 
+from base.database import db
 from base.checks import is_in_guild
 from base.config import Config
 from dao.cum_dao import CumDAO
@@ -10,7 +11,7 @@ class cum_stats_command(commands.Cog):
     def __init__(self, bot):
         self.bot: commands.Bot = bot
         self.config = Config.read_config()
-        self.dao = CumDAO()
+        self.dao = CumDAO(db)
 
     @commands.command()
     @is_in_guild()

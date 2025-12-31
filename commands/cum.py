@@ -2,13 +2,14 @@ import logging
 from discord.ext import commands
 from discord import Member
 from base.config import Config
+from base.database import db
 from dao.cum_dao import CumDAO
 from models.cum import Cum
 
 class Cum_cmd(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.dao = CumDAO()
+        self.dao = CumDAO(db)
         self.config = Config.read_config()
         self.logger = logging.getLogger(__name__)
 

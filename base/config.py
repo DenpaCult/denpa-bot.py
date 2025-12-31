@@ -4,7 +4,7 @@ class Config():
     _instance: dict | None = None
 
     @classmethod
-    def read_config(cls: type["Config"], config_file: str = "config.json") -> dict:
+    def read_config(cls: type["Config"], config_file: str = "persist/config.json") -> dict:
         '''
         returns a json of the config file
         '''
@@ -18,7 +18,7 @@ class Config():
         return cls._instance
     
     @classmethod
-    def update_config(cls, new_config: dict, config_file: str = "config.json"):
+    def update_config(cls, new_config: dict, config_file: str = "persist/config.json"):
         """
         how to make this safe so it doesnt ruin the config file if wrong dict object is passed?
         """
