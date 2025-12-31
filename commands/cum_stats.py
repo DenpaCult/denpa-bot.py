@@ -3,7 +3,6 @@ from discord import Embed
 from discord.ext import commands
 
 from base.database import db
-from base.checks import is_in_guild
 from base.config import Config
 from dao.cum_dao import CumDAO
 
@@ -14,7 +13,6 @@ class cum_stats_command(commands.Cog):
         self.dao = CumDAO(db)
 
     @commands.command()
-    @is_in_guild()
     async def cumstats(self, ctx: commands.Context):
         cunnyPointPngUrl = 'https://media.discordapp.net/attachments/856649672117583875/1150930157750722650/F5w7qXvaIAALzwy.png?width=1410&height=1168' # the what now?
 

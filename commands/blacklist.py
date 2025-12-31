@@ -1,6 +1,5 @@
 from discord import Role, Embed
 from discord.ext import commands
-from base.checks import is_in_guild
 from base.config import Config
 from base.database import db
 from dao.blacklist_dao import BlacklistDAO
@@ -15,7 +14,6 @@ class Blacklist(commands.Cog):
 
     @commands.command(aliases=["bl"])
     @commands.has_permissions(administrator=True, manage_roles=True)
-    @is_in_guild()
     async def blacklist(self, ctx: commands.Context, action: str, *args: str):
         if not action or not ctx.guild:
             return
