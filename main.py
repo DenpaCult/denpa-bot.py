@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 from discord.guild import Guild
 from base.config import Config
+from base.database import db
 from dotenv import load_dotenv
 
 discord.utils.setup_logging()
@@ -77,6 +78,8 @@ async def on_error(event_method: str, *args, **kwargs):
 
 
 async def main():
+    db.setup()
+
     async with bot:
         await load_extentions("events")
         await load_extentions("commands")

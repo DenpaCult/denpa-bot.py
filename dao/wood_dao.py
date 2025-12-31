@@ -1,15 +1,8 @@
 import logging
+
 from base.database import Database
 from dao.dao import BaseDAO
 from models.wood import WoodMessage
-
-# putting the init codes in the daos so we can combine them later in a sql file
-"""
-CREATE TABLE IF NOT EXISTS wood (
-	message_id INTEGER NOT NULL,
-	guild_id INTEGER NOT NULL
-);
-"""
 
 
 class WoodDAO(BaseDAO):
