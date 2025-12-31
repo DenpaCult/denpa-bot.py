@@ -4,7 +4,6 @@ from discord import Embed, Member, Role as DiscordRole
 from discord.ext import commands
 from dao.blacklist_dao import BlacklistDAO
 from base.config import Config
-from base.checks import is_in_guild
 from base.database import db
 
 
@@ -19,7 +18,6 @@ class Role(commands.Cog):
         return logging.getLogger(__name__)
 
     @commands.command(aliases=["broadcast", "syntonize", "roles"])
-    @is_in_guild()
     async def role(self, ctx: commands.Context, *args):
         if not ctx.guild or not isinstance(ctx.author, Member):
             self.logger.error(f";;role called outside of guild by {ctx.author.name}")
