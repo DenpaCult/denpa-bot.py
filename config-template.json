@@ -22,17 +22,17 @@
         987793980227985518
     ],
     "kokoRole": 856669801005711401,
-    "Wood": {
+    "wood": {
         "threshold": 5,
-        "channelId": "1090086858635096086"
+        "channelId": 1090086858635096086
     },
-    "Cringe": {
+    "cringe": {
         "threshold": 5,
-        "timeoutTime": 20,
-        "expireTime": 20,
-        "channelId": "1090086858635096086"
+        "timeoutTime": 10,
+        "expireTime": 1200,
+        "channelId": 1090086858635096086
     },
-	"DeleteGuard": {
-		"channelId": "1090086858635096086"
-	}
+    "deleteGuard": {
+        "channelId": 1090086858635096086
+    }
 }

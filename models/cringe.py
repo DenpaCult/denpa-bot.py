@@ -1,17 +1,21 @@
+from dataclasses import dataclass
 from discord import Message
 
-class Cringe:
-    """
-    Cringe object containing the message id of the message that has been reacted to
-    """
+
+@dataclass
+class CringeMessage:
+    """a discord message that has been voted as cringe"""
+
+    id: int
+    author_id: int
+    guild_id: int
 
     @classmethod
     def from_message(cls, message: Message):
-        return cls(message.id)
+        assert message.guild is not None
+
+        return cls(message.id, message.author.id, message.guild.id)
 
     @classmethod
-    def from_database(cls, item: tuple[int,int]):
-        return cls(item[1])
-    
-    def __init__(self, id: int):
-        self.id: int = id
+    def from_database(cls, item: tuple[int, int, int, int]):
+        return cls(item[1], item[2], item[3])

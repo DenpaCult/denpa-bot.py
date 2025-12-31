@@ -6,6 +6,7 @@ import os
 from dao.dao import BaseDAO, Database
 import logging
 import logging.config
+import traceback
 
 logging.config.fileConfig("logging.ini")
 logger = logging.getLogger(__name__)
@@ -13,7 +14,9 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 cfg = Config.read_config("config.json")
-bot = commands.Bot(command_prefix=cfg["prefix"], intents=discord.Intents.all(), max_messages=1000)
+bot = commands.Bot(
+    command_prefix=cfg["prefix"], intents=discord.Intents.all(), max_messages=1000
+)
 
 
 async def load_extentions(folder: str):
@@ -58,15 +61,13 @@ async def load_extentions(folder: str):
 
 @bot.event
 async def on_command_error(ctx, error):
-    import traceback
     traceback.print_exception(type(error), error, error.__traceback__)
 
     # Optional: send the error to Discord
-    await ctx.send(f"⚠️ Error: `{error}`")
+    await ctx.send(f"⚠️ Error: {error}")
 
 
 async def main():
-    logger.info("hi")
     async with bot:
         await load_extentions("events")
         await load_extentions("commands")
