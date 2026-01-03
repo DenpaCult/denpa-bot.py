@@ -3,14 +3,6 @@ from base.database import Database
 from dao.dao import BaseDAO
 from models.cringe import CringeMessage
 
-"""
-CREATE TABLE IF NOT EXISTS cringe (
-	message_id INTEGER NOT NULL,
-	author_id INTEGER NOT NULL,
-	guild_id INTEGER NOT NULL
-);
-"""
-
 
 class CringeDAO(BaseDAO):
     def __init__(self, db: Database):

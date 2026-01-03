@@ -1,0 +1,6 @@
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS wood (
+	message_id INTEGER NOT NULL,
+	guild_id INTEGER NOT NULL
+);
+"""
