@@ -24,7 +24,7 @@ class AutoRole(Cog):
         )
 
         await member.add_roles(*role_ids)
-        self.logger.info(f"[{member.guild.id}] auto-role for {member.name}")
+        self.logger.info(f"[{member.guild.name}] auto-role for {member.name}")
 
 
 async def setup(bot: Bot):

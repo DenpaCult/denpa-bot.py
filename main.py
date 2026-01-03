@@ -4,7 +4,7 @@ import logging.config
 import discord
 
 from discord.ext import commands
-from discord.guild import Guild
+from discord import Guild
 from base.config import Config
 from dotenv import load_dotenv
 

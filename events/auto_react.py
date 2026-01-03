@@ -26,7 +26,7 @@ class AutoReact(Cog):
 
             await message.add_reaction(emoji)
             self.logger.info(
-                f"[{message.guild.id}] reacted with {emoji} to {message.author.name}'s message"
+                f"[{message.guild.name}] reacted with {emoji} to {message.author.name}'s message"
             )
 
 

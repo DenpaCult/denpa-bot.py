@@ -1,6 +1,6 @@
 import logging
 
-from discord import Message, Member, TextChannel
+from discord import Message, Member, TextChannel, Guild
 from discord.ext import commands
 from base.utils import msg_embed
 from base.config import Config
@@ -22,16 +22,22 @@ class DeleteGuardEvent(commands.Cog):
     @commands.Cog.listener()
     async def on_message_delete(self, message: Message):
         assert isinstance(message.author, Member)
+        assert isinstance(message.guild, Guild)
 
         if not self.dao.exists(GuardedUser.from_member(message.author)):
             return
 
+        guild_name = message.guild.name
+
         embeds = msg_embed(message, f"{message.author.name}", "Deleted Message")
         await message.channel.send(embeds=embeds)
+
+        self.logger.info(f"[{guild_name}]: {message.author} deleted their message")
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: Message, after: Message):
         assert isinstance(before.author, Member)
+        assert isinstance(before.guild, Guild)
 
         # for some reason discord fires this event even if content is unchanged
         if before.content == after.content:
@@ -40,11 +46,15 @@ class DeleteGuardEvent(commands.Cog):
         if not self.dao.exists(GuardedUser.from_member(before.author)):
             return
 
+        guild_name = before.guild.name
+
         channel = await self.bot.fetch_channel(self.config["deleteGuard"]["channelId"])
         assert isinstance(channel, TextChannel)
 
         embeds = msg_embed(before, f"{before.author.name}", "Old Message Content")
         await channel.send(embeds=embeds)
+
+        self.logger.info(f"[{guild_name}]: {before.author} edited their message")
 
 
 async def setup(bot):
