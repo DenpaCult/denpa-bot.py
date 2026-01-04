@@ -13,7 +13,6 @@ class DeleteGuardEvent(commands.Cog):
     def __init__(self, bot):
         self.bot: commands.Bot = bot
         self.dao = DeleteGuardDAO(db)
-        self.config = Config.read_config()
 
     @property
     def logger(self):
@@ -39,6 +38,8 @@ class DeleteGuardEvent(commands.Cog):
         assert isinstance(before.author, Member)
         assert isinstance(before.guild, Guild)
 
+        cfg = await Config.load(before.guild.id)
+
         # for some reason discord fires this event even if content is unchanged
         if before.content == after.content:
             return
@@ -48,7 +49,7 @@ class DeleteGuardEvent(commands.Cog):
 
         guild_name = before.guild.name
 
-        channel = await self.bot.fetch_channel(self.config["deleteGuard"]["channelId"])
+        channel = await self.bot.fetch_channel(cfg.delete_guard.channelId)
         assert isinstance(channel, TextChannel)
 
         embeds = msg_embed(before, f"{before.author.name}", "Old Message Content")
