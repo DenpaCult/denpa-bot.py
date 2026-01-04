@@ -1,13 +1,13 @@
 import logging
+from attrs import asdict, has
 from discord import Embed
 from discord.ext import commands
 
-from base.config import Config
+from base.config import Config, GuildConfig
 
 class Config_cmd(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._config = Config.read_config()
         self.logger = logging.getLogger(__name__)
 
     @commands.command(aliases=["con", "cfg"])
@@ -17,48 +17,80 @@ class Config_cmd(commands.Cog):
         """
         directly changes config.json
         """
+        cfg = await Config.load(ctx.guild.id)
         match(action.lower()):
             case "help":
-                await ctx.send(embed=self.help_menu(args))
-            case "cringe":
-                await ctx.send(embed=self.update_val("Cringe", args))
-            case "wood":
-                await ctx.send(embed=self.update_val("Wood", args))
+                await ctx.send(
+                        embed=self.help_menu(cfg, args)
+                        )
+            case _:
+                await ctx.send(
+                        embed=await self.update_val(
+                            cfg, 
+                            ctx.guild.id, 
+                            [action, *args[:-1]], # all the args between the command and the last arg are the field names (this definitly can be written better)
+                            args[-1] # field value
+                            )
+                        )
 
-    def help_menu(self, args) -> Embed:
-        if args:
-            args = args[0]
-        else:
-            args = ""
+    def help_menu(self, cfg: GuildConfig, args) -> Embed:
+        args = args[0].lower() if args else ""
 
-        _embed = Embed(color=0x0099ff, description=" ", title="admin config menu")
-        match(args.lower()):
-            case "":
-                _embed.description = "use with args below to show more info"
-                _embed.add_field(name="cringe", value="", inline=False)
-                _embed.add_field(name="wood", value="", inline=False)
-            case "cringe"|"wood":
-                for name in self._config[args.lower().capitalize()].keys():
-                    _embed.add_field(name=name,value="",inline=False)
+        _embed = Embed(
+                color=0x0099ff,
+                description=" ",
+                title="admin config menu"
+                )
+
+        if (args == ""):
+            _embed.description = "use with args below to show more info"
+
+            for k in asdict(cfg).keys():
+                attrib = cfg.__getattribute__(k)
+                value = attrib
+                if has(type(attrib)):
+                    value = "..."
+
+                _embed.add_field(
+                        name=f"{k}: {value}", 
+                        value="",
+                        inline=False
+                        )
+
+        elif has(type(cfg.__getattribute__(args))):
+
+            for name, value in asdict(cfg.__getattribute__(args)).items():
+                _embed.add_field(
+                        name=f"{name}: {value}",
+                        value="",
+                        inline=False
+                        )
 
         return _embed
 
-    def update_val(self, name, args) -> Embed:
+    async def update_val(self, cfg: GuildConfig, guild_id: int, names: list, val) -> Embed:
         _embed = Embed(color=0x0099ff, description="Invalid arguments")
-        if len(args) < 2:
+        if len(names) < 1:
             return _embed
 
-        if args[0] in self._config[name].keys():
-            try:
-                _val = int(args[1])
-                self._config[name][args[0]] = _val
-                Config.update_config(self._config)
-                _embed.description = f"updated {name} {args[0]} to {_val}"
-                return _embed
-            except:
-                return _embed
+        last = names.pop()
 
-        return _embed
+        try:
+            obj = cfg
+            for name in names:
+                obj = obj.__getattribute__(name)
+
+            try:
+                val = int(val)
+            except Exception as _:
+                pass
+
+            obj.__setattr__(last, val)
+            await Config.save(guild_id)
+            _embed.description = f"updated {' '.join(names + [last])} to {val}"
+            return _embed
+        except Exception as _:
+            return _embed
 
 
 

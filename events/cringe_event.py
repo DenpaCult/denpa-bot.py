@@ -16,7 +16,6 @@ from base.utils import msg_embed
 class CringeEvent(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.config = Config.read_config()
         self.dao = CringeDAO(db)
 
     @property
@@ -28,7 +27,9 @@ class CringeEvent(Cog):
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
         assert payload.guild_id is not None
 
-        target_emoji: str = self.config["emoji"]["cringe"]
+        cfg = await Config.load(payload.guild_id)
+
+        target_emoji: str = cfg.emoji.cringe
         reacted_emoji = str(payload.emoji)
 
         if reacted_emoji != target_emoji:
@@ -39,7 +40,7 @@ class CringeEvent(Cog):
         msg_ch = await self.bot.fetch_channel(payload.channel_id)
         assert isinstance(msg_ch, TextChannel)
 
-        log_ch = await self.bot.fetch_channel(self.config["cringe"]["channelId"])
+        log_ch = await self.bot.fetch_channel(cfg.cringe.channel_id)
         assert isinstance(log_ch, TextChannel)
 
         message = await msg_ch.fetch_message(payload.message_id)
@@ -53,7 +54,7 @@ class CringeEvent(Cog):
             return
 
         elapsed = datetime.now(tz=timezone.utc) - message.created_at
-        expireTime = self.config["cringe"]["expireTime"]
+        expireTime = cfg.cringe.expire_time
 
         if elapsed.seconds >= expireTime:  # created_at returns time in utc
             self.logger.info(
@@ -73,8 +74,8 @@ class CringeEvent(Cog):
             filter(lambda x: str(x.emoji) == target_emoji, message.reactions)
         )[0].count
 
-        if cringe_count >= self.config["cringe"]["threshold"]:
-            base = timedelta(seconds=self.config["cringe"]["timeoutTime"])
+        if cringe_count >= cfg.cringe.threshold:
+            base = timedelta(seconds=cfg.cringe.timeout_time)
             offences = self.dao.count(payload.guild_id, message.author.id)
 
             multiplier = max((offences + 1) - 5, 0) # current past 5

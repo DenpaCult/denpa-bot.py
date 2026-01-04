@@ -14,7 +14,6 @@ COLOUR_BLUE = 0x0099FF
 class Role(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.config = Config.read_config()
         self.blacklist_dao = BlacklistDAO(db)
 
     @property
@@ -26,6 +25,8 @@ class Role(commands.Cog):
         assert ctx.guild is not None
         assert isinstance(ctx.author, Member)
 
+        cfg = await Config.load(ctx.guild.id)
+
         permissions = ctx.author.guild_permissions
         has_permissions = permissions.administrator or permissions.manage_roles
 
@@ -33,8 +34,8 @@ class Role(commands.Cog):
         roles = filter(lambda r: (r.id not in ids) or has_permissions, ctx.guild.roles)
         roles = filter(lambda r: not r.is_bot_managed(), roles)
 
-        valid = self.config["emoji"]["denpabot"]
-        err = self.config["emoji"]["error"]
+        valid = cfg.emoji.denpabot
+        err = cfg.emoji.error
 
         embed = Embed(color=COLOUR_BLUE)
 

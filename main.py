@@ -5,7 +5,6 @@ import discord
 
 from discord.ext import commands
 from discord import Guild
-from base.config import Config
 from base.database import db
 from dotenv import load_dotenv
 
@@ -14,9 +13,10 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-cfg = Config.read_config("persist/config.json")
+# we cant load prefix from config since the configs are guild specific
+# TODO: find a way to have prefix per guild
 bot = commands.Bot(
-    command_prefix=cfg["prefix"], intents=discord.Intents.all(), max_messages=1000
+    command_prefix=";;", intents=discord.Intents.all(), max_messages=1000
 )
 
 

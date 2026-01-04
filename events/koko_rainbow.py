@@ -9,7 +9,6 @@ from base.config import Config
 class KokoRainbow(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.config = Config.read_config()
         self.task: asyncio.Task | None = None
 
     @property
@@ -18,7 +17,8 @@ class KokoRainbow(Cog):
 
     @Cog.listener()
     async def on_guild_available(self, guild: Guild):
-        role_id: int = self.config["kokoRole"]
+        cfg = await Config.load(guild.id)
+        role_id: int = cfg.koko_role
         koko_role: list[Role] = list(filter(lambda r: r.id == role_id, guild.roles))
         count = len(koko_role)
 

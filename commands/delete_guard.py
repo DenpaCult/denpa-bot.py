@@ -1,7 +1,6 @@
 import logging
 
 from discord import Member
-from base.config import Config
 from discord.ext import commands
 from base.database import db
 from dao.deleteguard_dao import DeleteGuardDAO
@@ -12,7 +11,6 @@ class DeleteGuard(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.dao = DeleteGuardDAO(db)
-        self.config = Config.read_config()
 
     @property
     def logger(self):

@@ -9,11 +9,14 @@ from dao.cum_dao import CumDAO
 class cum_stats_command(commands.Cog):
     def __init__(self, bot):
         self.bot: commands.Bot = bot
-        self.config = Config.read_config()
         self.dao = CumDAO(db)
 
     @commands.command()
     async def cumstats(self, ctx: commands.Context):
+        assert ctx.guild
+
+        cfg = await Config.load(ctx.guild.id)
+
         cunnyPointPngUrl = 'https://media.discordapp.net/attachments/856649672117583875/1150930157750722650/F5w7qXvaIAALzwy.png?width=1410&height=1168' # the what now?
 
         user = ctx.author
@@ -31,7 +34,7 @@ class cum_stats_command(commands.Cog):
                 description="Here are this users cum stats!",
                 timestamp=datetime.now(tz=timezone.utc)
                 ).set_author( # i just realised Embed is a builder lol
-                        name=f"{user.name} | {self.config['emoji']['wood']} {self.config['emoji']['same']} tbh",# shouldn't this be changed?
+                        name=f"{user.name} | {cfg.emoji.wood} {cfg.emoji.same} tbh",# shouldn't this be changed?
                         icon_url=user.display_avatar.url
                 ).set_thumbnail(
                         url=cunnyPointPngUrl
