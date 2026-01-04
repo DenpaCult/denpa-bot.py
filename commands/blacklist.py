@@ -10,16 +10,16 @@ class Blacklist(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.dao = BlacklistDAO(db)
-        self.config = Config.read_config()
 
     @commands.command(aliases=["bl"])
     @commands.has_permissions(administrator=True, manage_roles=True)
     async def blacklist(self, ctx: commands.Context, action: str, *args: str):
-        if not action or not ctx.guild:
-            return
+        assert ctx.guild
+
+        cfg = await Config.load(ctx.guild.id)
 
         action = action.strip()
-        msg = f"{self.config['emoji']['error']} | Command error"
+        msg = f"{cfg.emoji.error} | Command error"
 
         embed = Embed(color=0x0099FF, description=" ")
         match action:
