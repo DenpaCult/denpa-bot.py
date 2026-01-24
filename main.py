@@ -1,6 +1,5 @@
 import os
 import logging
-import logging.config
 import discord
 
 from discord.ext import commands
@@ -78,7 +77,7 @@ async def on_error(event_method: str, *args, **kwargs):
 
 
 async def main():
-    db.setup()
+    db.setup() # TODO(kajo): remove this out of async
 
     async with bot:
         await load_extentions("events")

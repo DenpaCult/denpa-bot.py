@@ -25,7 +25,7 @@ class Emoji:
 @define
 class Wood:
     threshold: int = field(default=5)
-    channel_id: int = field(default=1090086858635096086)
+    channel_id: int | None = field(default=None)
 
 @define
 class Cringe:
