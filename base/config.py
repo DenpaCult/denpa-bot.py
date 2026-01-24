@@ -36,7 +36,7 @@ class Cringe:
 
 @define
 class DeleteGuard:
-    channel_id: int = field(default=1090086858635096086)
+    channel_id: int | None = field(default=None)
 
 
 @define
