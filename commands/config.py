@@ -32,28 +32,34 @@ class ConfigCommand(commands.Cog):
                 await ctx.send(embed=self.help(cfg, ()))
 
     def check(self, cfg: GuildConfig) -> str:
-        builder = "### Config Check\n"
-
-        error_count = 0
+        b = "### Config Check\n"
+        err_count = 0
 
         if cfg.wood.channel_id is None:
-            builder += "- cfg.wood.channel_id is not set. ;;wood will not work as expected.\n"
-            error_count += 1
+            b += "- cfg.wood.channel_id is not set. (;;wood)\n"
+            err_count += 1
 
         if cfg.cringe.channel_id is None:
-            builder += "- cfg.cringe.channel_id is not set. ;;cringe will not work as expected.\n"
-            error_count += 1
+            b += "- cfg.cringe.channel_id is not set. (;;cringe)\n"
+            err_count += 1
 
         if cfg.delete_guard.channel_id is None:
-            builder += "- cfg.delete_guard.channel_id is not set. ;;deleteguard will not work as expected\n"
-            error_count += 1
+            b += "- cfg.delete_guard.channel_id is not set. (;;deleteguard)\n"
+            err_count += 1
 
-        builder += "- TODO(kajo): implement checks for default and koko roles\n"
-        builder += "### Summary\n"
-        builder += f"{error_count} issues detected. ;;toromi will run "
-        builder += "in a degraded state." if error_count else "as expected."
+        if cfg.koko_role is None:
+            b += "- cfg.koko_role is not set. (;;toromi role rainbow)\n"
+            err_count += 1
 
-        return builder
+        if len(cfg.default_roles) == 0:
+            b += "- cfg.default_roles is empty. (;;toromi auto-role)\n"
+            err_count += 1
+
+        b += "### Summary\n"
+        b += f"{err_count} issues detected. ;;toromi will run "
+        b += "in a degraded state." if err_count else "as expected."
+
+        return b
 
     def help(self, cfg: GuildConfig, args) -> Embed:
         args = args[0].lower() if args else ""
@@ -82,6 +88,10 @@ class ConfigCommand(commands.Cog):
         report = "FIXME(kajo): this message should have been overwritten"
 
         match args:
+            case (("default_roles", *roles),):
+                cfg.default_roles = list(map(lambda s: int(s), roles))
+                report = f"set cfg.default_roles to {cfg.default_roles}"
+
             case ((field, value),):
                 try:
                     setattr(cfg, field, maybe_int(value))

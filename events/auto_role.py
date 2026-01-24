@@ -18,10 +18,9 @@ class AutoRole(Cog):
 
         cfg = await Config.load(member.guild.id)
 
-        targets = cfg.default_roles
         role_ids = map(
             lambda x: Object(x.id),
-            filter(lambda x: x.id in targets, member.guild.roles),
+            filter(lambda x: x.id in cfg.default_roles, member.guild.roles),
         )
 
         await member.add_roles(*role_ids)

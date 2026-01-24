@@ -18,16 +18,20 @@ class KokoRainbow(Cog):
     @Cog.listener()
     async def on_guild_available(self, guild: Guild):
         cfg = await Config.load(guild.id)
-        role_id: int = cfg.koko_role
-        koko_role: list[Role] = list(filter(lambda r: r.id == role_id, guild.roles))
-        count = len(koko_role)
+
+        if cfg.koko_role is None:
+            self.logger.info(f"[{guild.name}]: koko role has not been configured")
+            return
+
+        role: list[Role] = list(filter(lambda r: r.id == cfg.koko_role, guild.roles))
+        count = len(role)
 
         if count != 1:
             self.logger.error(f"[{guild.name}]: found {count} != 1 koko roles")
             return
 
         self.logger.info(f"[{guild.name}]: koko role update_colour task start")
-        self.task = asyncio.create_task(update_colour(koko_role[0]))
+        self.task = asyncio.create_task(update_colour(role[0]))
 
 
 async def setup(bot: Bot):

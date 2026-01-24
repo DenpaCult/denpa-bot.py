@@ -16,8 +16,6 @@ bot = commands.Bot(
     command_prefix=os.environ["TOROMI_PREFIX"], intents=discord.Intents.all(), max_messages=1000
 )
 
-# TODO(kajo): on guild ready, log guild specific configuration
-
 async def load_extentions(folder: str):
     """
     load everything in the {folder} folder as a command and/or event
