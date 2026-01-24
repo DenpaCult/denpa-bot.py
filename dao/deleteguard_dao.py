@@ -4,13 +4,6 @@ from base.database import Database
 from dao.dao import BaseDAO
 from models.delete_guard import GuardedUser
 
-"""
-CREATE TABLE IF NOT EXISTS deleteguard (
-        user_id INTEGER NOT NULL,
-        guild_id INTEGER NOT NULL
-);
-"""
-
 
 class DeleteGuardDAO(BaseDAO):
     def __init__(self, db: Database):
