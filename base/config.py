@@ -29,11 +29,10 @@ class Wood:
 
 @define
 class Cringe:
-    threshold: int = field(default=0)
-    channel_id: int = field(default=1090086858635096086)
-    expire_time: int = field(default=20)
-    timeout_time: int = field(default=10)
-
+    threshold: int = field(default=5)
+    channel_id: int | None = field(default=None)
+    expire_time: int = field(default=20 * 60) # s 
+    timeout_time: float = field(default=10 * 60 + 6) # s 
 
 @define
 class DeleteGuard:

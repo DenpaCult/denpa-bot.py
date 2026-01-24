@@ -18,6 +18,7 @@ bot = commands.Bot(
     command_prefix=";;", intents=discord.Intents.all(), max_messages=1000
 )
 
+# TODO(kajo): on guild ready, log guild specific configuration
 
 async def load_extentions(folder: str):
     """

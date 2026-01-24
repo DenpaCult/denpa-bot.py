@@ -25,8 +25,7 @@ class CringeEvent(Cog):
     # on_reaction_add doesnt get invoked when reacting to older messages before the bot was started
     @Cog.listener()
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
-        assert payload.guild_id is not None
-
+        assert payload.guild_id
         cfg = await Config.load(payload.guild_id)
 
         target_emoji: str = cfg.emoji.cringe
@@ -35,10 +34,11 @@ class CringeEvent(Cog):
         if reacted_emoji != target_emoji:
             return
 
-        guild = await guild_name(self.bot, payload)
-
         msg_ch = await self.bot.fetch_channel(payload.channel_id)
         assert isinstance(msg_ch, TextChannel)
+
+        if cfg.cringe.channel_id is None:
+            return await msg_ch.send("cfg.cringe.channel_id is not set. run `;;config cringe channel_id <channel_id>`")
 
         log_ch = await self.bot.fetch_channel(cfg.cringe.channel_id)
         assert isinstance(log_ch, TextChannel)
@@ -47,6 +47,8 @@ class CringeEvent(Cog):
         assert isinstance(message.author, Member)
 
         assert payload.member is not None
+
+        guild = await guild_name(self.bot, payload)
 
         if message.author.id == payload.member.id:
             await message.remove_reaction(reacted_emoji, message.author)
