@@ -12,10 +12,8 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-# we cant load prefix from config since the configs are guild specific
-# TODO: find a way to have prefix per guild
 bot = commands.Bot(
-    command_prefix=";;", intents=discord.Intents.all(), max_messages=1000
+    command_prefix=os.environ["TOROMI_PREFIX"], intents=discord.Intents.all(), max_messages=1000
 )
 
 # TODO(kajo): on guild ready, log guild specific configuration

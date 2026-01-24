@@ -41,7 +41,6 @@ class DeleteGuard:
 
 @define
 class GuildConfig:
-    prefix: str = field(default=";;")
     emoji: Emoji = field(factory=Emoji)
 
     tplaylist: str = field(default="PLb1JKHu_D4MTBXu-8MCFBJ855RpoUuYTf")
@@ -116,7 +115,6 @@ class Config:
     @staticmethod
     def _guild_from_dict(data: dict) -> GuildConfig:
         return GuildConfig(
-            prefix=data.get("prefix", ";;"),
             emoji=Emoji(**data.get("emoji", Emoji())),
             tplaylist=data.get("tplaylist", "PLb1JKHu_D4MTBXu-8MCFBJ855RpoUuYTf"),
             default_roles=data.get("default_roles", [987793980227985518]),
