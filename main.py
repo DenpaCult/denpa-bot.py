@@ -83,7 +83,7 @@ async def main():
     async with bot:
         await load_extentions("events")
         await load_extentions("commands")
-        await bot.start(os.environ["TOKEN"])
+        await bot.start(os.environ["TOROMI_TOKEN"])
 
 
 if __name__ == "__main__":

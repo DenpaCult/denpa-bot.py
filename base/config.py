@@ -43,7 +43,6 @@ class DeleteGuard:
 @define
 class GuildConfig:
     prefix: str = field(default=";;")
-    sqlite_file: str = field(default="toromi.db") # TODO: remove this and move it to env
     emoji: Emoji = field(factory=Emoji)
 
     tplaylist: str = field(default="PLb1JKHu_D4MTBXu-8MCFBJ855RpoUuYTf")
@@ -119,7 +118,6 @@ class Config:
     def _guild_from_dict(data: dict) -> GuildConfig:
         return GuildConfig(
             prefix=data.get("prefix", ";;"),
-            sqlite_file=data.get("sqlite_file", "toromi.db"),
             emoji=Emoji(**data.get("emoji", Emoji())),
             tplaylist=data.get("tplaylist", "PLb1JKHu_D4MTBXu-8MCFBJ855RpoUuYTf"),
             default_roles=data.get("default_roles", [987793980227985518]),
