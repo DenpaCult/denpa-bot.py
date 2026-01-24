@@ -83,23 +83,23 @@ class ConfigCommand(commands.Cog):
 
         return _embed
 
-    async def update_val(self, cfg: GuildConfig, guild_id: int, *args: str) -> str:
+    async def update_val(self, cfg: GuildConfig, guild_id: int, args: list[str]) -> str:
         # TODO: reimplement the embed that hoog did
         report = "FIXME(kajo): this message should have been overwritten"
 
         match args:
-            case (("default_roles", *roles),):
+            case ["default_roles", *roles]:
                 cfg.default_roles = list(map(lambda s: int(s), roles))
                 report = f"set cfg.default_roles to {cfg.default_roles}"
 
-            case ((field, value),):
+            case [field, value]:
                 try:
                     setattr(cfg, field, maybe_int(value))
                     report = f"set cfg.{field} to {value}"
                 except AttributeError:
                     return f"{field} is not a property of GuildConfig"
 
-            case ((feat, field, value),):
+            case [feat, field, value]:
                 try:
                     setattr(getattr(cfg, feat), field, maybe_int(value))
                     report = f"set cfg.{feat}.{field} to {value}"
