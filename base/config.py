@@ -18,7 +18,7 @@ class Emoji:
     same: str = field(default="🦈")
     take: str = field(default="🎍")
     cat1: str = field(default="<:cat1:856666094277361745>")
-    UwU: str = field(default="<:UwU:856664498094342205>")
+    uwu: str = field(default="<:UwU:856664498094342205>")
     cunny: str = field(default="<:Cunny:856666244006281256>")
     cringe: str = field(default="🔴")
 
