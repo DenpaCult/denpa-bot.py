@@ -1,12 +1,11 @@
+import os
 import logging
 import sqlite3
-from base.config import Config
 
 from schemas.wood import SCHEMA as WOOD_SCHEMA
 from schemas.cringe import SCHEMA as CRINGE_SCHEMA
 from schemas.blacklist import SCHEMA as BLACKLIST_SCHEMA
 from schemas.deleteguard import SCHEMA as DELETEGUARD_SCHEMA
-
 
 class Database:
     con: sqlite3.Connection
@@ -33,5 +32,4 @@ class Database:
         self.con.commit()
         self.logger.info("setup complete")
 
-
-db = Database(Config.read_config()["sqlite_file"])
+db = Database(os.environ.get("TOROMI_DB_PATH", "persist/toromi.db"))

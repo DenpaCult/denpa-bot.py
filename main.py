@@ -1,11 +1,9 @@
 import os
 import logging
-import logging.config
 import discord
 
 from discord.ext import commands
 from discord import Guild
-from base.config import Config
 from base.database import db
 from dotenv import load_dotenv
 
@@ -14,11 +12,9 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-cfg = Config.read_config("persist/config.json")
 bot = commands.Bot(
-    command_prefix=cfg["prefix"], intents=discord.Intents.all(), max_messages=1000
+    command_prefix=os.environ["TOROMI_PREFIX"], intents=discord.Intents.all(), max_messages=1000
 )
-
 
 async def load_extentions(folder: str):
     """
@@ -78,12 +74,12 @@ async def on_error(event_method: str, *args, **kwargs):
 
 
 async def main():
-    db.setup()
+    db.setup() # TODO(kajo): remove this out of async
 
     async with bot:
         await load_extentions("events")
         await load_extentions("commands")
-        await bot.start(os.environ["TOKEN"])
+        await bot.start(os.environ["TOROMI_TOKEN"])
 
 
 if __name__ == "__main__":

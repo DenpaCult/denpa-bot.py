@@ -7,7 +7,6 @@ from base.config import Config
 class AutoRole(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.config = Config.read_config()
 
     @property
     def logger(self):
@@ -17,10 +16,11 @@ class AutoRole(Cog):
     async def on_member_join(self, member: Member):
         assert member.guild is not None
 
-        targets = self.config["defaultRoles"]
+        cfg = await Config.load(member.guild.id)
+
         role_ids = map(
             lambda x: Object(x.id),
-            filter(lambda x: x.id in targets, member.guild.roles),
+            filter(lambda x: x.id in cfg.default_roles, member.guild.roles),
         )
 
         await member.add_roles(*role_ids)
