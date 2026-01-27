@@ -52,7 +52,7 @@ class WoodEvent(Cog):
         )[0].count
 
         if wood_count >= cfg.wood.threshold:
-            self.dao.add(WoodMessage.from_message(message))
+            await self.dao.add(WoodMessage.from_message(message))
 
             name = await guild_name(self.bot, payload)
             self.logger.info(

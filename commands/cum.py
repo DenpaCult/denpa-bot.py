@@ -30,12 +30,12 @@ class Cum_cmd(commands.Cog):
 
         if not member or cummee_id == cummer_id:
             await ctx.send(f"Oh no! {ctx.author.mention} has cummed on themselves! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}")
-            self.dao.add(Cum(cummer_id, cummer_id))
+            await self.dao.add(Cum(cummer_id, cummer_id))
             return
 
         await ctx.send(f"Oh no! {ctx.author.mention} has cummed on {member.mention}! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}")
 
-        self.dao.add(Cum(cummer_id, cummee_id))
+        await self.dao.add(Cum(cummer_id, cummee_id))
 
 
 async def setup(bot):

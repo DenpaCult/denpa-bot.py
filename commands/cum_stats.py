@@ -24,10 +24,10 @@ class cum_stats_command(commands.Cog):
         if ctx.message.mentions:
             user = ctx.message.mentions[0]
 
-        most_cummed_on_id = self.dao.get_most_cummed_on_user(user.id)
+        most_cummed_on_id = await self.dao.get_most_cummed_on_user(user.id)
         most_cummed_on = (await self.bot.fetch_user(most_cummed_on_id)).name if most_cummed_on_id else ""
 
-        most_cummed_on_by_id = self.dao.get_most_cummer_on_you(user.id)
+        most_cummed_on_by_id = await self.dao.get_most_cummer_on_you(user.id)
         most_cummed_on_by = (await self.bot.fetch_user(most_cummed_on_by_id)).name if most_cummed_on_by_id else ""  # these namings are all too confusing
         _embed = Embed(
                 color=0xffffff, 
@@ -39,9 +39,9 @@ class cum_stats_command(commands.Cog):
                 ).set_thumbnail(
                         url=cunnyPointPngUrl
                 ).add_field(
-                        name='# of times cummed', value=self.dao.get_cummed_count(user.id), inline=True
+                        name='# of times cummed', value=await self.dao.get_cummed_count(user.id), inline=True
                 ).add_field(
-                        name='# of times cummed on', value=self.dao.get_cummed_on_count(user.id), inline=True
+                        name='# of times cummed on', value=await self.dao.get_cummed_on_count(user.id), inline=True
                 ).add_field(
                         name='most cummed on user by you', value=most_cummed_on, inline=False
                 ).add_field(
