@@ -1,5 +1,8 @@
+import datetime
 from enum import Enum
+from io import StringIO
 import json
+from time import perf_counter
 
 from attr import attrib, attrs
 from typing import Deque, Dict, List, Literal, Self, Sequence, Tuple
@@ -11,6 +14,7 @@ import audioop
 from discord import (
     AudioSource,
     ClientException,
+    FFmpegOpusAudio,
     FFmpegPCMAudio,
     Guild,
     Member,
@@ -25,23 +29,17 @@ from asyncio.subprocess import create_subprocess_exec, PIPE
 
 @attrs(auto_attribs=True)
 class SeekableAudioSource(AudioSource):
-    real_source: FFmpegPCMAudio
-
-    segments: List[bytes] = attrib(factory=list)  # Audio segments
-    segment_indx: int = 0  # Audio progress in segments
-    volume: float = 1.0  # Volume, 0 to 1
+    real_source: FFmpegPCMAudio = attrib(repr=False)
+    volume: float = 1.0  # Volume, 0 to 2
+    
+    play_location: float = 0.0 # Where are we roughly playing at?
 
     def read(self):
-        self.segment_indx += 1
-        while self.segment_indx > len(self.segments):
-            frame = self.real_source.read()
-            # End of song
-            if frame == b"":
-                return b""
-            self.segments.append(frame)
-
-        # Assume stereo audio always
-        return audioop.mul(self.segments[self.segment_indx - 1], 2, self.volume)
+        result = self.real_source.read()
+        
+        self.play_location += 0.02
+        
+        return audioop.mul(result, 2, self.volume)
 
     def is_opus(self) -> bool:
         return self.real_source.is_opus()
@@ -49,21 +47,17 @@ class SeekableAudioSource(AudioSource):
     def cleanup(self) -> None:
         return self.real_source.cleanup()
 
-    def seek(self, time: float):
-        time = max(time, 0)
-        self.segment_indx = int(time // 0.02)
-
-    def set_volume(self, volume: float):
-        self.volume = volume
-        self.volume = min(max(self.volume, 0), 1)
-
 
 @attrs(auto_attribs=True)
 class Track:
     title: str
-    url: str
+    webpage_url: str
     duration: int | None
-    requested_by: Member
+    requested_by: Member = attrib(repr=False)
+
+    streaming_url: str | None = attrib(repr=False, default=None)
+    memoized_stream: SeekableAudioSource | None = attrib(init=False, default=None)
+    stream_timestamp: float = attrib(init=False, repr=False, default=0.0)
 
     @classmethod
     async def try_from_url(cls, url: str, requested_by: Member) -> Self | List[Self]:
@@ -79,6 +73,8 @@ class Track:
                 "--skip-download",
                 "--cookies-from-browser",
                 "firefox",
+                "-f",
+                "ba/ba",
                 "--flat-playlist",
                 url,
                 stdout=PIPE,
@@ -107,16 +103,18 @@ class Track:
                 result = [
                     cls(
                         title=entry.get("title", "Unknown title"),
-                        url=entry["url"],
+                        webpage_url=entry["url"],
                         duration=entry.get("duration"),
                         requested_by=requested_by,
+                        streaming_url=None,
                     )
                     for entry in metadata["entries"]
                 ]
             else:
                 result = cls(
                     title=metadata.get("title", "Unknown title"),
-                    url=metadata["webpage_url"],
+                    webpage_url=metadata["webpage_url"],
+                    streaming_url=metadata["url"],
                     duration=metadata.get("duration"),
                     requested_by=requested_by,
                 )
@@ -126,33 +124,62 @@ class Track:
 
         return result
 
-    async def get_source(self) -> SeekableAudioSource:
-        try:
-            process = await create_subprocess_exec(
-                "yt-dlp",
-                "--cookies-from-browser",
-                "firefox",
-                "--dump-single-json",
-                "--simulate",
-                "--no-warnings",
-                "-x",
-                "-f",
-                "ba/ba",
-                self.url,
-                stdout=PIPE,
-                stderr=PIPE,
-            )
-        except Exception as e:
-            logging.getLogger("yt-dlp").exception("Failed to start yt-dlp")
-            raise e
+    async def fetch_source(self):
+        if self.streaming_url is None:
+            try:
+                process = await create_subprocess_exec(
+                    "yt-dlp",
+                    "--cookies-from-browser",
+                    "firefox",
+                    "--dump-single-json",
+                    "--simulate",
+                    "--no-warnings",
+                    "-x",
+                    "--audio-format",
+                    "opus",
+                    "-f",
+                    "ba/ba",
+                    self.webpage_url,
+                    stdout=PIPE,
+                    stderr=PIPE,
+                )
+            except Exception as e:
+                logging.getLogger("yt-dlp").exception("Failed to start yt-dlp")
+                raise e
 
-        assert process.stdout is not None
+            assert process.stdout is not None
 
-        result = json.loads((await process.stdout.read()).decode("utf-8"))
-        streaming_url = result["url"]
+            result = json.loads((await process.stdout.read()).decode("utf-8"))
+            self.streaming_url = result["url"]
 
-        real_source = FFmpegPCMAudio(streaming_url)
-        return SeekableAudioSource(real_source)
+        assert self.streaming_url is not None
+        real_source = FFmpegPCMAudio(self.streaming_url)
+        source = SeekableAudioSource(real_source)
+
+        self.memoized_stream = source
+        self.stream_timestamp = perf_counter()
+
+    async def get_stream(self):
+        if (
+            self.memoized_stream is not None
+            and self.stream_timestamp - perf_counter() < 3600
+        ):
+            return self.memoized_stream
+
+        await self.fetch_source()
+        assert self.memoized_stream is not None
+
+        return self.memoized_stream
+
+    async def seek(self, seek_time=0.0):
+        target = await self.get_stream()
+        assert self.streaming_url is not None
+
+        # Live replace of source is fairly dangerous, but...
+        target.real_source = FFmpegPCMAudio(
+            self.streaming_url, before_options=f"-ss {seek_time}"
+        )
+        target.play_location = seek_time
 
 
 @attrs(auto_attribs=True, hash=True)
@@ -163,19 +190,6 @@ class MusicPlaying(commands.Cog):
 
     @attrs(auto_attribs=True)
     class Player:
-        @attrs(auto_attribs=True)
-        class QueueMutex:
-            queue: Deque[Track] = attrib(init=False, factory=Deque)
-            queue_lock: aio.Lock = attrib(init=False, factory=aio.Lock)
-
-            async def __aenter__(self):
-                await self.queue_lock.acquire()
-
-                return self.queue
-
-            async def __aexit__(self, _, __, ___):
-                self.queue_lock.release()
-
         class LoopMode(Enum):
             NoLoop = 0
             LoopCurrent = 1
@@ -186,8 +200,9 @@ class MusicPlaying(commands.Cog):
         voice_client: VoiceClient
 
         history: Deque[Track] = attrib(init=False, factory=Deque)
-        queue_mutex: QueueMutex = attrib(init=False, factory=QueueMutex)
-        player_task: aio.Task[None] = attrib(init=False)
+        now_playing: Track | None = attrib(init=False, default=None)
+        queue: Deque[Track] = attrib(init=False, factory=Deque)
+        player_task: aio.Task[None] | None = attrib(init=False, default=None)
         next_song_event: aio.Event = attrib(init=False, factory=aio.Event)
         cur_source: SeekableAudioSource | None = attrib(init=False, default=None)
 
@@ -198,10 +213,8 @@ class MusicPlaying(commands.Cog):
         def logger(self):
             return logging.getLogger(f"GuildState[{self.guild.id}]")
 
-        def __attrs_post_init__(self):
-            self.player_task = aio.create_task(self.song_player_task())
-
         def on_song_end_cb(self, err):
+            self.now_playing = None
             self.next_song_event.set()
 
             # TODO: Update DB history
@@ -215,54 +228,77 @@ class MusicPlaying(commands.Cog):
                 aio.create_task(
                     self.backreport_channel.send(f"Error during play: {err}")
                 )
+                aio.create_task(self.stop())
 
         async def song_player_task(self):
-            while True:
-                await aio.sleep(0.1)
+            if not self.queue:
+                return
 
-                async with self.queue_mutex as queue:
-                    if not queue:
-                        continue
+            next_track = self.queue.popleft()
 
-                    next_track = queue.popleft()
-
-                try:
-                    source = await next_track.get_source()
-                except Exception as e:
-                    await self.backreport_channel.send(
-                        f"Unable to obtain audio for {next_track.title} ({next_track.url}), error: {e}, skipping..."
-                    )
-                    continue
-                else:
-                    self.cur_source = source
-
-                self.next_song_event.clear()
-                self.voice_client.play(
-                    source,
-                    bitrate=192,
-                    application="audio",
-                    signal_type="music",
-                    after=self.on_song_end_cb,
-                )
-                self.history.append(next_track)
+            try:
+                source = await next_track.get_stream()
+            except Exception as e:
                 await self.backreport_channel.send(
-                    f"Playing {next_track.title} ({next_track.url}), requested by {next_track.requested_by.display_name}."
+                    f"Unable to obtain audio for {next_track.title} ({next_track.webpage_url}), error: {e}, skipping..."
                 )
+                return
+            else:
+                self.cur_source = source
 
-                await self.next_song_event.wait()
+            self.voice_client.play(
+                source,
+                bitrate=192,
+                application="audio",
+                signal_type="music",
+                after=self.on_song_end_cb,
+            )
+            self.now_playing = next_track
+            self.history.append(next_track)
 
-                match (self.loop_mode):
-                    case self.LoopMode.NoLoop:
-                        ...
-                    case self.LoopMode.LoopCurrent:
-                        async with self.queue_mutex as queue:
-                            queue.appendleft(next_track)
-                    case self.LoopMode.LoopQueue:
-                        queue.append(next_track)
+            await self.backreport_channel.send(
+                f"Playing {next_track.title} ({next_track.webpage_url}), requested by {next_track.requested_by.display_name}."
+            )
+
+            prefetch_track = None
+            if self.queue:
+                prefetch_track = self.queue[0]
+                aio.create_task(prefetch_track.fetch_source())
+
+            await self.next_song_event.wait()
+            self.voice_client.stop()
+            self.next_song_event.clear()
+
+            match (self.loop_mode):
+                case self.LoopMode.NoLoop:
+                    ...
+                case self.LoopMode.LoopCurrent:
+                    self.queue.appendleft(next_track)
+                case self.LoopMode.LoopQueue:
+                    self.queue.append(next_track)
+
+        async def start(self):
+            if self.player_task is not None:
+                return
+
+            self.player_task = aio.create_task(self.song_player_task())
+
+            def _(_):
+                self.player_task = None
+
+                if len(self.queue):
+                    # Start another run of song playing once we're done
+                    aio.create_task(self.start())
+
+            self.player_task.add_done_callback(_)
 
         async def stop(self):
+            aio.create_task(self.voice_client.disconnect(force=True))
+
+            if self.player_task is None:
+                return
+
             self.player_task.cancel()
-            await self.voice_client.disconnect(force=True)
 
     guild_players: Dict[int, Player] = attrib(init=False, factory=dict, hash=False)
 
@@ -358,7 +394,7 @@ class MusicPlaying(commands.Cog):
     @commands.command(aliases=["p"])
     @commands.guild_only()
     async def play(self, ctx: commands.Context, *, url: str):
-        """Add song to queue"""
+        """Add song to the queue."""
         assert ctx.guild is not None
 
         if (triplet := await self.vc_guard(ctx)) is not None:
@@ -372,17 +408,20 @@ class MusicPlaying(commands.Cog):
             await text_channel.send(f"Failed to add song to queue: {e}.")
             return
 
-        async with player.queue_mutex as queue:
-            if isinstance(result, Sequence):
-                await text_channel.send(
-                    f"Added {len(result)} songs to the queue, requested by {invoker.display_name}."
-                )
-                queue.extend(result)
-            else:
-                await text_channel.send(
-                    f"Added {result.title} to the queue, requested by {invoker.display_name}"
-                )
-                queue.append(result)
+        if isinstance(result, Sequence):
+            player.queue.extend(result)
+            await player.start()
+
+            await text_channel.send(
+                f"Added {len(result)} songs to the queue, requested by {invoker.display_name}."
+            )
+        else:
+            player.queue.append(result)
+            await player.start()
+
+            await text_channel.send(
+                f"Added {result.title} to the queue, requested by {invoker.display_name}"
+            )
 
     @commands.command(aliases=["pn"])
     @commands.guild_only()
@@ -401,20 +440,18 @@ class MusicPlaying(commands.Cog):
             await text_channel.send(f"Failed to add song to queue: {e}.")
             return
 
-        async with player.queue_mutex as queue:
-            cur_song = queue.popleft()
-            if isinstance(result, Sequence):
-                await text_channel.send(
-                    f"Added {len(result)} songs to the queue to play next, requested by {invoker.display_name}."
-                )
-                queue.extendleft(result)
-            else:
-                await text_channel.send(
-                    f"Added {result.title} to the queue to play next, requested by {invoker.display_name}"
-                )
-                queue.appendleft(result)
-
-            queue.appendleft(cur_song)
+        if isinstance(result, Sequence):
+            await text_channel.send(
+                f"Added {len(result)} songs to the queue to play next, requested by {invoker.display_name}."
+            )
+            player.queue.extendleft(result)
+            await player.start()
+        else:
+            await text_channel.send(
+                f"Added {result.title} to the queue to play next, requested by {invoker.display_name}"
+            )
+            player.queue.appendleft(result)
+            await player.start()
 
     @commands.command(aliases=["prev"])
     @commands.guild_only()
@@ -427,12 +464,12 @@ class MusicPlaying(commands.Cog):
         else:
             return
 
-        if not len(player.history):
+        if len(player.history) < 2:
             await text_channel.send("No song had been played previously.")
             return
 
-        prev_track = player.history[-1]
-        await self.play_next(ctx, url=prev_track.url)
+        prev_track = player.history[-2]
+        await self.play_next(ctx, url=prev_track.webpage_url)
 
     @commands.command()
     @commands.guild_only()
@@ -466,12 +503,8 @@ class MusicPlaying(commands.Cog):
 
     @commands.command(aliases=["s"])
     @commands.guild_only()
-    async def skip(self, ctx: commands.Context, to_skip_str: str):
-        """Skip songs in the queue. Accepts following formats:
-
-        skip -- skip current song
-        skip n -- skip n-th playing song, starting from 1
-        skip x-y -- skip songs #x through #y."""
+    async def skip(self, ctx: commands.Context, to_skip_str: str | None):
+        """Skip songs in the queue. Accepts ranges like 2-10."""
         assert ctx.guild is not None
 
         if (triplet := await self.vc_guard(ctx)) is not None:
@@ -483,7 +516,7 @@ class MusicPlaying(commands.Cog):
         skip_to = 1
 
         try:
-            if to_skip_str == "":
+            if not to_skip_str:
                 skip_from = 0
             else:
                 try:
@@ -501,20 +534,20 @@ class MusicPlaying(commands.Cog):
             await text_channel.send("Invalid argument")
             return
 
-        async with player.queue_mutex as queue:
-            if len(queue) == 0:
-                await text_channel.send("Nothing to skip.")
-                return
+        if len(player.queue) == 0:
+            await text_channel.send("Nothing to skip.")
+            return
 
-            new_queue = [*queue]
-            try:
-                del new_queue[skip_from:skip_to]
-            except:
-                await text_channel.send("Trying to skip non-existent entries")
-                return
+        new_queue = [*player.queue]
+        try:
+            del new_queue[skip_from:skip_to]
+        except:
+            await text_channel.send("Trying to skip non-existent entries")
+            return
 
-            queue.clear()
-            queue.extend(new_queue)
+        player.queue.clear()
+        player.queue.extend(new_queue)
+        await player.start()
 
         if skip_from == 0:
             # We've skipped current song
@@ -531,17 +564,19 @@ class MusicPlaying(commands.Cog):
         else:
             return
 
-        if player.cur_source is None:
+        if player.now_playing is None:
             await text_channel.send("Nothing is playing currently.")
             return
 
-        player.cur_source.seek(target_second)
-        await text_channel.send(f"Seeking to {target_second:.0}s")
+        target_second = max(target_second, 0)
+
+        await player.now_playing.seek(target_second)
+        await text_channel.send(f"Seeking to {target_second:.0f}s")
 
     @commands.command()
     @commands.guild_only()
     async def volume(self, ctx: commands.Context, *, volume: int):
-        """Set volume of current song from 0 to 100."""
+        """Set volume of current song from 0 to 200."""
         assert ctx.guild is not None
 
         if (triplet := await self.vc_guard(ctx)) is not None:
@@ -553,7 +588,7 @@ class MusicPlaying(commands.Cog):
             await text_channel.send("Nothing is playing currently.")
             return
 
-        player.cur_source.set_volume(volume / 100)
+        player.cur_source.volume = min(max(0, volume / 100), 2)
         await text_channel.send(f"Volume set to {player.cur_source.volume:.0%}")
 
     @commands.command()
@@ -582,6 +617,104 @@ class MusicPlaying(commands.Cog):
             case "queue":
                 player.loop_mode = MusicPlaying.Player.LoopMode.LoopQueue
                 await text_channel.send("Looping the queue now...")
+
+    @commands.command(aliases=["np"])
+    @commands.guild_only()
+    async def nowplaying(self, ctx: commands.Context):
+        assert ctx.guild is not None
+
+        if (triplet := await self.vc_guard(ctx)) is not None:
+            _, text_channel, player = triplet
+        else:
+            return
+
+        if player.now_playing is None:
+            await text_channel.send("Nothing is playing currently.")
+            return
+
+        assert len(player.history)
+        assert player.cur_source
+
+        cur_time_sec = int(player.cur_source.play_location)
+        maybe_dur = player.now_playing.duration
+
+        time_string = None
+        played_time_str = f"{datetime.timedelta(seconds=cur_time_sec)}"
+        if maybe_dur is None:
+            # Unknown duration
+            time_string = played_time_str.removeprefix("0:")
+        else:
+            dur_string = f"{datetime.timedelta(seconds=int(maybe_dur))}"
+            if maybe_dur < 3600:
+                time_string = f"{played_time_str.removeprefix('0:')}/{dur_string.removeprefix('0:')}"
+            else:
+                time_string = f"{played_time_str}/{dur_string}"
+
+        await text_channel.send(
+            f"Now playing {player.now_playing.title} ({time_string}), requested by {player.now_playing.requested_by.display_name}."
+        )
+
+    @commands.command(aliases=["q"])
+    @commands.guild_only()
+    async def queue(self, ctx: commands.Context, *, page: int | None):
+        assert ctx.guild is not None
+
+        if (triplet := await self.vc_guard(ctx)) is not None:
+            _, text_channel, player = triplet
+        else:
+            return
+
+        page = 1 if page is None else page
+        if page < 1:
+            await text_channel.send("Invalid page number.")
+            return
+
+        queue_text_segments = []
+
+        def make_queue_line(track: Track, track_num: int):
+            if track.duration:
+                dur_string = dur_string = (
+                    f"{datetime.timedelta(seconds=int(track.duration))}"
+                )
+                if track.duration < 3600:
+                    dur_string = dur_string.removeprefix("0:")
+
+                return f"{track_num}. {track.title} ({dur_string}): ({track.requested_by.display_name})"
+            return f"{track_num}. {track.title}: ({track.requested_by.display_name})"
+
+        if page == 1 and player.now_playing is not None:
+            queue_text_segments.append(make_queue_line(player.now_playing, 1))
+
+            queue_list = [*player.queue]
+
+            for i, track in enumerate(queue_list[:10], start=2):
+                queue_text_segments.append(make_queue_line(track, i))
+        else:
+            queue_list = [*player.queue]
+
+            start_indx = 10 * (page - 1)
+            for i, track in enumerate(
+                queue_list[start_indx : start_indx + 10], start=1
+            ):
+                queue_text_segments.append(make_queue_line(track, i))
+
+        await text_channel.send("\n".join(queue_text_segments))
+
+    @commands.command()
+    @commands.guild_only()
+    async def debug(self, ctx: commands.Context):
+        assert ctx.guild is not None
+
+        if (triplet := await self.vc_guard(ctx)) is not None:
+            _, text_channel, _ = triplet
+        else:
+            return
+
+        response = repr(self)
+        response = StringIO(response)
+
+        while next_ := response.read(2000):
+            await text_channel.send(next_)
 
 
 async def setup(bot):
