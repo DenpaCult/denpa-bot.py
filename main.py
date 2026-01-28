@@ -1,20 +1,20 @@
-from dotenv import load_dotenv
-from discord.ext import commands
-import discord
-from base.config import Config
 import os
-from dao.dao import BaseDAO, Database
 import logging
-import logging.config
+import discord
 
-logging.config.fileConfig("logging.ini")
+from discord.ext import commands
+from discord import Guild
+from base.database import db
+from dotenv import load_dotenv
+
+discord.utils.setup_logging()
 logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-cfg = Config.read_config("config.json")
-bot = commands.Bot(command_prefix=cfg["prefix"], intents=discord.Intents.all(), max_messages=1000)
-
+bot = commands.Bot(
+    command_prefix=os.environ["TOROMI_PREFIX"], intents=discord.Intents.all(), max_messages=1000
+)
 
 async def load_extentions(folder: str):
     """
@@ -57,20 +57,29 @@ async def load_extentions(folder: str):
 
 
 @bot.event
-async def on_command_error(ctx, error):
-    import traceback
-    traceback.print_exception(type(error), error, error.__traceback__)
+async def on_command_error(ctx: commands.Context, error):
+    await ctx.send(f":warning: {error}")
+    name = f"[{ctx.guild.name}]: " if isinstance(ctx.guild, Guild) else ""
 
-    # Optional: send the error to Discord
-    await ctx.send(f"⚠️ Error: `{error}`")
+    try:
+        raise error
+    except Exception:
+        logger.exception(f"{name}command {ctx.prefix}{ctx.command} failed")
+
+
+@bot.event
+async def on_error(event_method: str, *args, **kwargs):
+    name = f"[{args[0].name}]: " if isinstance(args[0], Guild) else ""
+    logger.exception(f"{name}event {event_method} failed")
 
 
 async def main():
-    logger.info("hi")
+    db.setup() # TODO(kajo): remove this out of async
+
     async with bot:
         await load_extentions("events")
         await load_extentions("commands")
-        await bot.start(os.environ["TOKEN"])
+        await bot.start(os.environ["TOROMI_TOKEN"])
 
 
 if __name__ == "__main__":

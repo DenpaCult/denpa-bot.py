@@ -1,56 +1,67 @@
-from datetime import timedelta, datetime, timezone
 import logging
-import traceback
-from discord import RawReactionActionEvent
+
+from discord import RawReactionActionEvent, TextChannel, Member
 from discord.ext.commands import Bot, Cog
 from base.config import Config
+from base.database import db
 from dao.wood_dao import WoodDAO
-from models.wood import Wood
-from base.utils import parse_message_into_embed
+from events.cringe_event import guild_name
+from models.wood import WoodMessage
+from base.utils import msg_embed
 
 
 class WoodEvent(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.logger = logging.getLogger(__name__)
-        self.config = Config.read_config()
-        self.dao = WoodDAO()
+        self.dao = WoodDAO(db)
 
+    @property
+    def logger(self):
+        return logging.getLogger(__name__)
+
+    # we dont use on_reaction_add because it doesnt get invoked when reacting to older messages before the bot was started
     @Cog.listener()
-    async def on_raw_reaction_add(self, payload: RawReactionActionEvent): # on_reaction_add doesnt get invoked when reacting to older messages before the bot was started
-        """
-        TODO: media support
-        keeping the try/catch for debugging until its finished
-        """
-        try:
-            wood_emoji = self.config["emoji"]["wood"]
-            reaction_emoji = str(payload.emoji)
-            if reaction_emoji != wood_emoji:
-                return
-            
-            channel = await self.bot.fetch_channel(payload.channel_id)
-            message = await channel.fetch_message(payload.message_id)
-            
-            
-            already_would = self.dao.get_one(Wood.from_message(message))
-            if already_would:
-                return
-            
-            wood_count = list(filter(lambda x: str(x.emoji) == wood_emoji, message.reactions))[0].count
-            
-            if wood_count >= self.config["Wood"]["threshold"]:
-                self.dao.add(Wood.from_message(message))
-                self.logger.info(f"{message.id} has been wooded")
+    async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
+        assert payload.guild_id
+        cfg = await Config.load(payload.guild_id)
 
-                _embeds = parse_message_into_embed(message, 0xe8b693, (f"{message.author.name} | 🦈 tbh", message.author.display_avatar.url), f"ID: {message.id}")
+        target_emoji = cfg.emoji.wood
+        reaction_emoji = str(payload.emoji)
 
-                wood_chan = await self.bot.fetch_channel(self.config["Wood"]["channelId"])
-                await wood_chan.send(embeds=_embeds)
-        except Exception as e:
-            self.logger.error(traceback.format_exc())
-            
-            
+        if reaction_emoji != target_emoji:
+            return # not a wood event
 
+        msg_ch = await self.bot.fetch_channel(payload.channel_id)
+        assert isinstance(msg_ch, TextChannel)
+
+        if cfg.wood.channel_id is None:
+            return await msg_ch.send("cfg.wood.channel_id not set. run `;;config wood channel_id <channel_id>`")
+
+        log_ch = await self.bot.fetch_channel(cfg.wood.channel_id)
+        assert isinstance(log_ch, TextChannel)
+
+        message = await msg_ch.fetch_message(payload.message_id)
+        assert isinstance(message.author, Member)
+
+        already_would = self.dao.get_one(WoodMessage.from_message(message))
+        if already_would:
+            return
+
+        wood_count = list(
+            filter(lambda x: str(x.emoji) == target_emoji, message.reactions)
+        )[0].count
+
+        if wood_count >= cfg.wood.threshold:
+            self.dao.add(WoodMessage.from_message(message))
+
+            name = await guild_name(self.bot, payload)
+            self.logger.info(
+                f"{name}: {message.id} by {message.author} has been added to woodboard"
+            )
+
+            await log_ch.send(
+                embeds=msg_embed(message, f"{message.author.name} | 🦈 tbh")
+            )
 
 
 async def setup(bot: Bot):

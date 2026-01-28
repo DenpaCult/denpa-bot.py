@@ -1,68 +1,128 @@
 import logging
+from attrs import asdict, has
 from discord import Embed
 from discord.ext import commands
 
-from base.config import Config
+from base.config import Config, GuildConfig
 
-class Config_cmd(commands.Cog):
+
+class ConfigCommand(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self._config = Config.read_config()
-        self.logger = logging.getLogger(__name__)
 
-    @commands.command(aliases=["con", "cfg"])
+    @property
+    def logger(self):
+        return logging.getLogger(__name__)
+
+    @commands.command(aliases=["cfg"])
     @commands.has_permissions(administrator=True)
     @commands.guild_only()
-    async def config(self, ctx, action: str, *args):
-        """
-        directly changes config.json
-        """
-        match(action.lower()):
-            case "help":
-                await ctx.send(embed=self.help_menu(args))
-            case "cringe":
-                await ctx.send(embed=self.update_val("Cringe", args))
-            case "wood":
-                await ctx.send(embed=self.update_val("Wood", args))
+    async def config(self, ctx: commands.Context, *args: str):
+        assert ctx.guild
+        cfg = await Config.load(ctx.guild.id)
 
-    def help_menu(self, args) -> Embed:
-        if args:
-            args = args[0]
-        else:
-            args = ""
+        match args:
+            case ("check", *_):
+                await ctx.send(self.check(cfg))
+            case ("set", *params):
+                await ctx.send(await self.update_val(cfg, ctx.guild.id, params))
+            case ("help", *params):
+                await ctx.send(embed=self.help(cfg, params))
+            case _:
+                await ctx.send(embed=self.help(cfg, ()))
 
-        _embed = Embed(color=0x0099ff, description=" ", title="admin config menu")
-        match(args.lower()):
-            case "":
-                _embed.description = "use with args below to show more info"
-                _embed.add_field(name="cringe", value="", inline=False)
-                _embed.add_field(name="wood", value="", inline=False)
-            case "cringe"|"wood":
-                for name in self._config[args.lower().capitalize()].keys():
-                    _embed.add_field(name=name,value="",inline=False)
+    def check(self, cfg: GuildConfig) -> str:
+        b = "### Config Check\n"
+        err_count = 0
+
+        if cfg.wood.channel_id is None:
+            b += "- cfg.wood.channel_id is not set. (;;wood)\n"
+            err_count += 1
+
+        if cfg.cringe.channel_id is None:
+            b += "- cfg.cringe.channel_id is not set. (;;cringe)\n"
+            err_count += 1
+
+        if cfg.delete_guard.channel_id is None:
+            b += "- cfg.delete_guard.channel_id is not set. (;;deleteguard)\n"
+            err_count += 1
+
+        if cfg.koko_role is None:
+            b += "- cfg.koko_role is not set. (;;toromi role rainbow)\n"
+            err_count += 1
+
+        if len(cfg.default_roles) == 0:
+            b += "- cfg.default_roles is empty. (;;toromi auto-role)\n"
+            err_count += 1
+
+        b += "### Summary\n"
+        b += f"{err_count} issues detected. ;;toromi will run "
+        b += "in a degraded state." if err_count else "as expected."
+
+        return b
+
+    def help(self, cfg: GuildConfig, args) -> Embed:
+        args = args[0].lower() if args else ""
+
+        _embed = Embed(color=0x0099FF, description=" ", title="admin config menu")
+
+        if args == "":
+            _embed.description = "use with args below to show more info"
+
+            for k in asdict(cfg).keys():
+                attrib = cfg.__getattribute__(k)
+                value = attrib
+                if has(type(attrib)):
+                    value = "..."
+
+                _embed.add_field(name=f"{k}: {value}", value="", inline=False)
+
+        elif has(type(cfg.__getattribute__(args))):
+            for name, value in asdict(cfg.__getattribute__(args)).items():
+                _embed.add_field(name=f"{name}: {value}", value="", inline=False)
 
         return _embed
 
-    def update_val(self, name, args) -> Embed:
-        _embed = Embed(color=0x0099ff, description="Invalid arguments")
-        if len(args) < 2:
-            return _embed
+    async def update_val(self, cfg: GuildConfig, guild_id: int, args: list[str]) -> str:
+        # TODO: reimplement the embed that hoog did
+        report = "FIXME(kajo): this message should have been overwritten"
 
-        if args[0] in self._config[name].keys():
-            try:
-                _val = int(args[1])
-                self._config[name][args[0]] = _val
-                Config.update_config(self._config)
-                _embed.description = f"updated {name} {args[0]} to {_val}"
-                return _embed
-            except:
-                return _embed
+        match args:
+            case ["default_roles", *roles]:
+                cfg.default_roles = list(map(lambda s: int(s), roles))
+                report = f"set cfg.default_roles to {cfg.default_roles}"
 
-        return _embed
+            case [field, value]:
+                try:
+                    setattr(cfg, field, maybe_int(value))
+                    report = f"set cfg.{field} to {value}"
+                except AttributeError:
+                    return f"{field} is not a property of GuildConfig"
+
+            case [feat, field, value]:
+                try:
+                    setattr(getattr(cfg, feat), field, maybe_int(value))
+                    report = f"set cfg.{feat}.{field} to {value}"
+                except AttributeError:
+                    return f"{feat}.{field} is not a property of GuildConfig "
+
+            case _:
+                return (
+                    "To use ;;config set, either provide:\n"
+                    "`;;config set foo bar` for `cfg.foo = bar`, or\n"
+                    "`;;config set foo bar baz` for `cfg.foo.bar = baz`"
+                )
+
+        await Config.save(guild_id)
+        return report
 
 
-
+def maybe_int(s: str) -> str | int:
+    try:
+        return int(s)
+    except ValueError:
+        return s
 
 
 async def setup(bot):
-    await bot.add_cog(Config_cmd(bot))
+    await bot.add_cog(ConfigCommand(bot))

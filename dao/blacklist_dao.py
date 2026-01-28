@@ -1,16 +1,8 @@
+import logging
+
 from base.database import Database
 from dao.dao import BaseDAO
-import logging
 from models.blacklist import BlacklistRole
-
-
-# FIXME(kajo): this isn't the responsibility of the DAO
-# TODO(kajo): figure out how we're going to do migrations or whatever
-"""
-CREATE TABLE blacklist (
-	role_id INTEGER NOT NULL,
-);
-"""
 
 
 class BlacklistDAO(BaseDAO):
