@@ -15,25 +15,25 @@ class CumDAO(BaseDAO):
         BaseDAO.__init__(self, db)
         self.logger = logging.getLogger(__name__)
 
-    def add(self, model: Cum):    
-        self.write("INSERT INTO cum (cummer_id, cummed_on_id) VALUES(?, ?);", (model.cummer_id, model.cummee_id))
+    async def add(self, model: Cum):    
+        await self.write("INSERT INTO cum (cummer_id, cummed_on_id) VALUES(?, ?);", (model.cummer_id, model.cummee_id))
 
-    def remove(self, model: Cum):
-        self.write("DELETE FROM cum WHERE cummer_id=? AND cummed_on_id=?", (model.cummer_id, model.cummee_id,))
+    async def remove(self, model: Cum):
+        await self.write("DELETE FROM cum WHERE cummer_id=? AND cummed_on_id=?", (model.cummer_id, model.cummee_id,))
 
-    def get_all(self) -> list[Cum]:
-        return list(map(lambda x: Cum(x[0],x[1]),self.fetch_all("SELECT * FROM cum;")))
+    async def get_all(self) -> list[Cum]:
+        return list(map(lambda x: Cum(x[0],x[1]), await self.fetch_all("SELECT * FROM cum;")))
 
-    def get_cummed_count(self, user_id: int) -> int: # How many times the user has cummed
-        data = self.fetch_all("SELECT * FROM cum WHERE cummer_id=?", (user_id,))
+    async def get_cummed_count(self, user_id: int) -> int: # How many times the user has cummed
+        data = await self.fetch_all("SELECT * FROM cum WHERE cummer_id=?", (user_id,))
         return len(list(map(lambda x: (x[0],x[1]) , data)))
 
-    def get_cummed_on_count(self, user_id: int) -> int: # How many times the user has been cummed on
-        data = self.fetch_all("SELECT * FROM cum WHERE cummed_on_id=?", (user_id,))
+    async def get_cummed_on_count(self, user_id: int) -> int: # How many times the user has been cummed on
+        data = await self.fetch_all("SELECT * FROM cum WHERE cummed_on_id=?", (user_id,))
         return len(list(map(lambda x: (x[0],x[1]) , data)))
 
-    def get_most_cummed_on_user(self, user_id) -> int | None: # person the user has cummed on the most, returns user_id the name should be fetched later
-        data = self.fetch_all("""
+    async def get_most_cummed_on_user(self, user_id) -> int | None: # person the user has cummed on the most, returns user_id the name should be fetched later
+        data = await self.fetch_all("""
                                SELECT cummed_on_id
                                FROM cum
                                WHERE cummer_id == ?
@@ -45,8 +45,8 @@ class CumDAO(BaseDAO):
         data = data[0][0] if data else None
         return data
 
-    def get_most_cummer_on_you(self, user_id) -> int | None: # person that has cummed on the user the most, returns user_id the name should be fetched later
-        data = self.fetch_all("""
+    async def get_most_cummer_on_you(self, user_id) -> int | None: # person that has cummed on the user the most, returns user_id the name should be fetched later
+        data = await self.fetch_all("""
                                SELECT cummer_id
                                FROM cum
                                WHERE cummed_on_id == ?

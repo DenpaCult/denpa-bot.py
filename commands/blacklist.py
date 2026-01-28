@@ -24,7 +24,7 @@ class Blacklist(commands.Cog):
         embed = Embed(color=0x0099FF, description=" ")
         match action:
             case "list":
-                ids = list(map(lambda x: x.id, self.dao.get_all()))
+                ids = list(map(lambda x: x.id, await self.dao.get_all()))
                 role_names = list(
                     map(
                         lambda x: x.name, filter(lambda r: r.id in ids, ctx.guild.roles)
@@ -43,10 +43,10 @@ class Blacklist(commands.Cog):
                     case 1:
                         target: Role = roles[0]
                         if action == "add":
-                            self.dao.add(BlacklistRole.from_role(target))
+                            await self.dao.add(BlacklistRole.from_role(target))
                             msg = f"added {role} to the blacklist"
                         else:
-                            self.dao.remove(BlacklistRole.from_role(target))
+                            await self.dao.remove(BlacklistRole.from_role(target))
                             msg = f"removed {role} from the blacklist"
                     case _:
                         msg = f"expected 0 or 1 roles, found {len(roles)}"

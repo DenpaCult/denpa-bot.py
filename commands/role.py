@@ -30,7 +30,7 @@ class Role(commands.Cog):
         permissions = ctx.author.guild_permissions
         has_permissions = permissions.administrator or permissions.manage_roles
 
-        ids = list(map(lambda r: r.id, self.blacklist_dao.get_all()))
+        ids = list(map(lambda r: r.id, await self.blacklist_dao.get_all()))
         roles = filter(lambda r: (r.id not in ids) or has_permissions, ctx.guild.roles)
         roles = filter(lambda r: not r.is_bot_managed(), roles)
 

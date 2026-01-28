@@ -13,16 +13,16 @@ class BlacklistDAO(BaseDAO):
     def logger(self):
         return logging.getLogger(__name__)
 
-    def add(self, model: BlacklistRole):
-        self.write("INSERT INTO blacklist (role_id) VALUES(?);", (model.id,))
+    async def add(self, model: BlacklistRole):
+        await self.write("INSERT INTO blacklist (role_id) VALUES(?);", (model.id,))
 
-    def remove(self, model: BlacklistRole):
-        self.write("DELETE FROM blacklist WHERE role_id=?", (model.id,))
+    async def remove(self, model: BlacklistRole):
+        await self.write("DELETE FROM blacklist WHERE role_id=?", (model.id,))
 
-    def get_all(self) -> list[BlacklistRole]:
+    async def get_all(self) -> list[BlacklistRole]:
         return list(
             map(
                 lambda x: BlacklistRole(x[0]),
-                self.fetch_all("SELECT * FROM blacklist;"),
+                await self.fetch_all("SELECT * FROM blacklist;"),
             )
-        )  # fetch_all returns [('streamer',)] for some reason
+        )

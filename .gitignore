@@ -20,4 +20,7 @@ ENV/
 env.bak/
 venv.bak/
 
+*.log
+*.db
+
 pyrightconfig.json

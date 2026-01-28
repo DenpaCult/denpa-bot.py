@@ -78,7 +78,7 @@ class CringeEvent(Cog):
 
         if cringe_count >= cfg.cringe.threshold:
             base = timedelta(seconds=cfg.cringe.timeout_time)
-            offences = self.dao.count(payload.guild_id, message.author.id)
+            offences = await self.dao.count(payload.guild_id, message.author.id)
 
             multiplier = max((offences + 1) - 5, 0) # current past 5
             total = base + timedelta(seconds=2 * multiplier)
@@ -88,7 +88,7 @@ class CringeEvent(Cog):
             except Exception as _:
                 self.logger.error(traceback.format_exc())
 
-            self.dao.add(CringeMessage.from_message(message))
+            await self.dao.add(CringeMessage.from_message(message))
 
             self.logger.info(
                 f"{guild}: offence #{offences + 1}. timed out {message.author} for {total.seconds}s"

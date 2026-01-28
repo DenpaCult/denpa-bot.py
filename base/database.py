@@ -6,6 +6,9 @@ from schemas.wood import SCHEMA as WOOD_SCHEMA
 from schemas.cringe import SCHEMA as CRINGE_SCHEMA
 from schemas.blacklist import SCHEMA as BLACKLIST_SCHEMA
 from schemas.deleteguard import SCHEMA as DELETEGUARD_SCHEMA
+from schemas.cum import SCHEMA as CUM_SCHEMA
+from schemas.queue import SCHEMA as QUEUE_SCHEMA
+from schemas.denparty import SCHEMA as DENPARTY_SCHEMA
 
 class Database:
     con: sqlite3.Connection
@@ -23,10 +26,14 @@ class Database:
             CRINGE_SCHEMA,
             BLACKLIST_SCHEMA,
             DELETEGUARD_SCHEMA,
+            CUM_SCHEMA,
+            DENPARTY_SCHEMA,
+            QUEUE_SCHEMA,
         ]
 
         cur = self.con.cursor()
         for schema in schemas:
+            print(schema)
             cur.execute(schema)
 
         self.con.commit()
