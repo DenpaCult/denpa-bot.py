@@ -1,9 +1,10 @@
-from discord import Role, Embed
+from discord import Role
 from discord.ext import commands
 from base.config import Config
 from base.database import db
 from dao.blacklist_dao import BlacklistDAO
 from models.blacklist import BlacklistRole
+from models.reply_embeds import ReplyEmbed
 
 
 class Blacklist(commands.Cog):
@@ -21,7 +22,6 @@ class Blacklist(commands.Cog):
         action = action.strip()
         msg = f"{cfg.emoji.error} | Command error"
 
-        embed = Embed(color=0x0099FF, description=" ")
         match action:
             case "list":
                 ids = list(map(lambda x: x.id, await self.dao.get_all()))
@@ -60,7 +60,7 @@ class Blacklist(commands.Cog):
             case _:
                 msg = "invalid option TODO(kajo): write better message"
 
-        embed.add_field(name="Blacklist", value=msg)
+        embed = ReplyEmbed().add_field(name="Blacklist", value=msg)
         await ctx.send(embed=embed)
 
 
