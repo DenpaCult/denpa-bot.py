@@ -9,6 +9,7 @@ from schemas.deleteguard import SCHEMA as DELETEGUARD_SCHEMA
 from schemas.cum import SCHEMA as CUM_SCHEMA
 from schemas.queue import SCHEMA as QUEUE_SCHEMA
 from schemas.denparty import SCHEMA as DENPARTY_SCHEMA
+from schemas.editcfg import SCHEMA as EDITCFG_SCHEMA
 
 class Database:
     con: sqlite3.Connection
@@ -29,6 +30,7 @@ class Database:
             CUM_SCHEMA,
             DENPARTY_SCHEMA,
             QUEUE_SCHEMA,
+            EDITCFG_SCHEMA
         ]
 
         cur = self.con.cursor()
