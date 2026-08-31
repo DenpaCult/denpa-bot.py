@@ -1,12 +1,13 @@
-from datetime import UTC, datetime
 import logging
+from datetime import UTC, datetime
 from math import floor
 from sqlite3 import OperationalError
+
 from discord import Member, Message, RawMessageUpdateEvent, TextChannel
 from discord.ext import commands
 
-from dao.edit_cfg_dao import EditCfgDAO
 from base.database import db
+from dao.edit_cfg_dao import EditCfgDAO
 
 
 class EditEvent(commands.Cog):
@@ -29,15 +30,13 @@ class EditEvent(commands.Cog):
             _config = await self.dao.get_guild_cfg(payload.guild_id)
         except OperationalError:
             self.logger.error(
-                    "Message edit listenr db error, "
-                    "editcfg table/row might not exist in the database"
-                    )
+                "Message edit listenr db error, "
+                "editcfg table/row might not exist in the database"
+            )
             return
 
         if not _config:
-            self.logger.error(f"Message edit config for {payload.guild_id}"
-                              "not found."
-                              )
+            self.logger.error(f"Message edit config for {payload.guild_id}not found.")
 
         channel = self.bot.get_channel(payload.channel_id)
 
@@ -47,29 +46,31 @@ class EditEvent(commands.Cog):
 
         assert type(message.author) is Member
 
-        if set(
-                [role.id for role in message.author.roles]
-               ).intersection(_config.ignore_roles):
+        if {role.id for role in message.author.roles}.intersection(
+            _config.ignore_roles
+        ):
             return
 
         if (
-                datetime.now(
-                    tz=UTC
-                    ) - message.created_at
-                ).total_seconds() * 3600 > _config.time_limit_h:
+            datetime.now(tz=UTC) - message.created_at
+        ).total_seconds() * 3600 > _config.time_limit_h:
             report_channel = self.bot.get_channel(_config.report_channel_id)
             assert type(report_channel) is TextChannel
             await report_channel.send(
-                    f"{
-                        [f"<@{i}>" for i in _config.mention_list]
-                        if _config.mention_list else ""}"
-                    f"\n{message.author.name} edited a "
-                    f"[message]({message.jump_url}) that was posted "
-                    f"<t:{floor(message.created_at.timestamp())}:R>.\n"
-                    f"{
-                        f"# Before:\n```{payload.cached_message.content}```\n"
-                        if payload.cached_message else "\n"}# After:\n```"
-                    f"{message.content}```"
+                f"{
+                    [f'<@{i}>' for i in _config.mention_list]
+                    if _config.mention_list
+                    else ''
+                }"
+                f"\n{message.author.name} edited a "
+                f"[message]({message.jump_url}) that was posted "
+                f"<t:{floor(message.created_at.timestamp())}:R>.\n"
+                f"{
+                    f'# Before:\n```{payload.cached_message.content}```\n'
+                    if payload.cached_message
+                    else '\n'
+                }# After:\n```"
+                f"{message.content}```"
             )
 
 
