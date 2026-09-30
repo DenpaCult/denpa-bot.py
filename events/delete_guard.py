@@ -24,7 +24,7 @@ class DeleteGuardEvent(commands.Cog):
         assert isinstance(message.author, Member)
         assert isinstance(message.guild, Guild)
 
-        if not self.dao.exists(GuardedUser.from_member(message.author)):
+        if not await self.dao.exists(GuardedUser.from_member(message.author)):
             return
 
         guild_name = message.guild.name
@@ -45,7 +45,7 @@ class DeleteGuardEvent(commands.Cog):
         if before.content == after.content:
             return
 
-        if not self.dao.exists(GuardedUser.from_member(before.author)):
+        if not await self.dao.exists(GuardedUser.from_member(before.author)):
             return
 
         if cfg.delete_guard.channel_id is None:
