@@ -66,7 +66,7 @@ class ConfigCommand(commands.Cog):
         if args == "":
             _embed.description = "use with args below to show more info"
 
-            for k in asdict(cfg).keys():
+            for k in asdict(cfg):
                 attrib = cfg.__getattribute__(k)
                 value = attrib
                 if has(type(attrib)):
