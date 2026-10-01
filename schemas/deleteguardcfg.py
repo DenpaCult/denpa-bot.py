@@ -1,0 +1,7 @@
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS woodcfg (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    guild_id INTEGER NOT NULL,
+    channel_id INTEGER
+)
+"""
