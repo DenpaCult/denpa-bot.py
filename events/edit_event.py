@@ -25,6 +25,13 @@ class EditEvent(commands.Cog):
         assert self.bot.user is not None
         assert payload.guild_id
 
+        data = payload.data
+
+        # this is a way to distinguish 
+        # between discord server side embed updates and user message edits
+        if data["embeds"]:
+            return
+
         _config = None
         try:
             _config = await self.dao.get_guild_cfg(payload.guild_id)
@@ -45,6 +52,9 @@ class EditEvent(commands.Cog):
         message: Message = await channel.fetch_message(payload.message_id)
 
         assert type(message.author) is Member
+
+        if message.author.id == self.bot.user.id:
+            return
 
         if {role.id for role in message.author.roles}.intersection(
             _config.ignore_roles
