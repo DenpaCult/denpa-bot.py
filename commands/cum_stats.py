@@ -1,10 +1,9 @@
-from datetime import datetime, timezone
-from discord import Embed
 from discord.ext import commands
 
 from base.database import db
 from base.config import Config
 from dao.cum_dao import CumDAO
+from models.reply_embeds import ReplyEmbed
 
 class cum_stats_command(commands.Cog):
     def __init__(self, bot):
@@ -29,13 +28,11 @@ class cum_stats_command(commands.Cog):
 
         most_cummed_on_by_id = await self.dao.get_most_cummer_on_you(user.id)
         most_cummed_on_by = (await self.bot.fetch_user(most_cummed_on_by_id)).name if most_cummed_on_by_id else ""  # these namings are all too confusing
-        _embed = Embed(
-                color=0xffffff, 
-                description="Here are this users cum stats!",
-                timestamp=datetime.now(tz=timezone.utc)
-                ).set_author( # i just realised Embed is a builder lol
-                        name=f"{user.name} | {cfg.emoji.wood} {cfg.emoji.same} tbh",# shouldn't this be changed?
-                        icon_url=user.display_avatar.url
+        _embed = ReplyEmbed(
+                description=f"Here are {user.name}'s cum stats!",
+                #).set_author( # i just realised Embed is a builder lol
+                #        name=f"{user.name} | {cfg.emoji.wood} {cfg.emoji.same} tbh",# shouldn't this be changed?
+                #        icon_url=user.display_avatar.url
                 ).set_thumbnail(
                         url=cunnyPointPngUrl
                 ).add_field(
@@ -46,7 +43,7 @@ class cum_stats_command(commands.Cog):
                         name='most cummed on user by you', value=most_cummed_on, inline=False
                 ).add_field(
                         name='user who cummed on you the most', value=most_cummed_on_by , inline=False
-                ).set_footer(text='cummies :))', icon_url=cunnyPointPngUrl)
+                )#.set_footer(text='cummies :))', icon_url=cunnyPointPngUrl)
 
         await ctx.send(embed=_embed)
 

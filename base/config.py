@@ -47,7 +47,6 @@ class GuildConfig:
     emoji: Emoji = field(factory=Emoji)
 
     tplaylist: str = field(default="PLb1JKHu_D4MTBXu-8MCFBJ855RpoUuYTf")
-    default_roles: list[int] = field(factory=list)
     koko_role: int | None = field(default=None)
 
     wood: Wood = field(factory=Wood)
@@ -113,7 +112,6 @@ class Config:
         return GuildConfig(
             emoji=Emoji(**data.get("emoji", Emoji())),
             tplaylist=data.get("tplaylist", "PLb1JKHu_D4MTBXu-8MCFBJ855RpoUuYTf"),
-            default_roles=data.get("default_roles", []),
             koko_role=data.get("koko_role", None),
             wood=Wood(**data.get("wood", Wood())),
             cringe=Cringe(**data.get("cringe", Cringe())),
