@@ -149,7 +149,9 @@ class Config:
         #     cls._instances[guild_id] = cfg
 
 
-        return cfg
+        dao = ConfigDao(db=db)
+
+        return await dao.load(guild_id)
 
     @classmethod
     async def save(cls, guild_id: int):
