@@ -1,7 +1,7 @@
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS emojicfg (
     id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    guild_id INTEGER NOT NULL,
+    guild_id INTEGER NOT NULL UNIQUE,
     play TEXT DEFAULT ▶️,
     stop TEXT DEFAULT ⏹️,
     queue TEXT DEFAULT 📄,

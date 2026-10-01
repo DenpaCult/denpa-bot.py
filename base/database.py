@@ -1,16 +1,11 @@
-import os
+import importlib
 import logging
+import os
+import pkgutil
 import sqlite3
 
-from schemas.wood import SCHEMA as WOOD_SCHEMA
-from schemas.cringe import SCHEMA as CRINGE_SCHEMA
-from schemas.blacklist import SCHEMA as BLACKLIST_SCHEMA
-from schemas.deleteguard import SCHEMA as DELETEGUARD_SCHEMA
-from schemas.cum import SCHEMA as CUM_SCHEMA
-from schemas.queue import SCHEMA as QUEUE_SCHEMA
-from schemas.denparty import SCHEMA as DENPARTY_SCHEMA
-from schemas.editcfg import SCHEMA as EDITCFG_SCHEMA
-from schemas.emojicfg import SCHEMA as EMOJICFG_SCHEMA
+import schemas
+
 
 class Database:
     con: sqlite3.Connection
@@ -23,24 +18,29 @@ class Database:
         self.con = sqlite3.connect(path)
 
     def setup(self):
-        schemas = [
-            WOOD_SCHEMA,
-            CRINGE_SCHEMA,
-            BLACKLIST_SCHEMA,
-            DELETEGUARD_SCHEMA,
-            CUM_SCHEMA,
-            DENPARTY_SCHEMA,
-            QUEUE_SCHEMA,
-            EDITCFG_SCHEMA,
-            EMOJICFG_SCHEMA,
-        ]
-
         cur = self.con.cursor()
-        for schema in schemas:
-            print(schema)
-            cur.execute(schema)
+
+        for module in pkgutil.iter_modules(schemas.__path__):
+            if module.name.startswith("_"):
+                continue
+
+            schema = importlib.import_module(
+                    f"{schemas.__name__}.{module.name}"
+                    )
+
+            if not hasattr(schema, "SCHEMA"):
+                continue
+
+            try:
+                cur.execute(schema.SCHEMA)
+            except sqlite3.Error:
+                self.logger.exception("Failed to execute schema: %s",
+                                      module.name)
+                print(schema.SCHEMA)
+                raise
 
         self.con.commit()
         self.logger.info("setup complete")
+
 
 db = Database(os.environ.get("TOROMI_DB_PATH", "persist/toromi.db"))
