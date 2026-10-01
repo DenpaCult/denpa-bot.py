@@ -59,6 +59,7 @@ class ConfigCommand(commands.Cog):
         return embed
 
     def help(self, cfg: GuildConfig, args) -> ReplyEmbed:
+        # TODO: get the args from the db
         args = args[0].lower() if args else ""
 
         _embed = ReplyEmbed(description=" ", title="𝒶𝒹𝓂𝒾𝓃 𝒸𝑜𝓃𝒻𝒾𝑔 𝓂𝑒𝓃𝓊")
@@ -111,7 +112,6 @@ class ConfigCommand(commands.Cog):
                     "`;;config set foo bar` for `cfg.foo = bar`, or\n"
                     "`;;config set foo bar baz` for `cfg.foo.bar = baz`"
                 )
-
         await Config.save(guild_id)
         return ReplyEmbed(description=report)
 

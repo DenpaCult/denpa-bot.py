@@ -123,32 +123,38 @@ class Config:
 
     @classmethod
     async def load(cls, guild_id: int) -> GuildConfig:
+        # TODO: init the config dbs if they don't exist
         async with cls._lock(guild_id):
             if guild_id in cls._instances:
                 return cls._instances[guild_id]
 
         path = cls._base_path / f"{guild_id}.json"
 
+        dao = ConfigDao(db=db)
+        cfg = await dao.load(guild_id)
+
         if not path.exists():
-            cfg = GuildConfig()
-            async with cls._lock(guild_id):
-                cls._instances[guild_id] = cfg
-            await cls.save(guild_id)
+            # cfg = GuildConfig()
+            # async with cls._lock(guild_id):
+            #     cls._instances[guild_id] = cfg
+            # await cls.save(guild_id)
+            
             return cfg
 
-        async with cls._lock(guild_id):
-            with open(path, encoding="utf-8") as f:
-                raw = json.load(f)
+        # async with cls._lock(guild_id):
+        #     with open(path, encoding="utf-8") as f:
+        #         raw = json.load(f)
 
-            cfg = cls._guild_from_dict(raw)
-            cls._instances[guild_id] = cfg
+        #     cfg = cls._guild_from_dict(raw)
+        #     cls._instances[guild_id] = cfg
 
-        dao = ConfigDao(db=db)
 
-        return await dao.load(guild_id)
+        return cfg
 
     @classmethod
     async def save(cls, guild_id: int):
+        # TODO: make proper classes for configDAOs
+        # and save appropriately in the database
         async with cls._lock(guild_id):
             if guild_id not in cls._instances:
                 raise KeyError("Guild config not loaded")
