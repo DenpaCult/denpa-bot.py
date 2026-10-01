@@ -1,0 +1,10 @@
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS woodcfg (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    guild_id INTEGER NOT NULL,
+    threshold INTEGER DEFAULT 5,
+    channel_id INTEGER,
+    expire_time INTEGER DEFAULT 1200,
+    timeout_time REAL DEFAULT
+)
+"""
