@@ -1,6 +1,8 @@
 from asyncio import Lock
 from sqlite3 import Cursor
+
 from base.database import Database
+
 
 class BaseDAO:
     def __init__(self, db: Database):
