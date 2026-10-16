@@ -19,6 +19,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.pyre/
 
 *.log
 *.db

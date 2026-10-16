@@ -1,4 +1,5 @@
 import logging
+
 from attrs import asdict, has
 from discord.ext import commands
 
@@ -59,6 +60,7 @@ class ConfigCommand(commands.Cog):
         return embed
 
     def help(self, cfg: GuildConfig, args) -> ReplyEmbed:
+        # TODO: get the args from the db
         args = args[0].lower() if args else ""
 
         _embed = ReplyEmbed(description=" ", title="𝒶𝒹𝓂𝒾𝓃 𝒸𝑜𝓃𝒻𝒾𝑔 𝓂𝑒𝓃𝓊")
@@ -66,7 +68,7 @@ class ConfigCommand(commands.Cog):
         if args == "":
             _embed.description = "use with args below to show more info"
 
-            for k in asdict(cfg).keys():
+            for k in asdict(cfg):
                 attrib = cfg.__getattribute__(k)
                 value = attrib
                 if has(type(attrib)):
@@ -81,28 +83,13 @@ class ConfigCommand(commands.Cog):
         return _embed
 
     async def update_val(self, cfg: GuildConfig, guild_id: int, args: list[str]) -> ReplyEmbed:
-        # TODO: reimplement the embed that hoog did # hoog: hi :3
-        report = "FIXME(kajo): this message should have been overwritten"
-
         match args:
 
             case [field, value]:
-                try:
-                    setattr(cfg, field, maybe_int(value))
-                    report = f"set cfg.{field} to {value}"
-                except AttributeError:
-                    return ReplyEmbed.Error(
-                            description=f"{field} is not a property of GuildConfig"
-                            )
+                db_name, key = None, field
 
             case [feat, field, value]:
-                try:
-                    setattr(getattr(cfg, feat), field, maybe_int(value))
-                    report = f"set cfg.{feat}.{field} to {value}"
-                except AttributeError:
-                    return ReplyEmbed.Error(
-                        description=f"{feat}.{field} is not a property of GuildConfig"
-                    )
+                db_name, key = feat, field
 
             case _:
                 return ReplyEmbed.Error(
@@ -112,8 +99,20 @@ class ConfigCommand(commands.Cog):
                     "`;;config set foo bar baz` for `cfg.foo.bar = baz`"
                 )
 
-        await Config.save(guild_id)
-        return ReplyEmbed(description=report)
+        value = maybe_int(value)
+        try:
+            await Config.update_db(guild_id, db_name, key, value)
+        except (AttributeError, KeyError):
+            scope = f"{db_name}." if db_name else ""
+            return ReplyEmbed.Error(
+                description=f"{scope}{key} is not a property of GuildConfig"
+            )
+
+        target = getattr(cfg, db_name) if db_name else cfg
+        setattr(target, key, value)  # keep the cached _instances entry in sync
+
+        scope = f"{db_name}." if db_name else ""
+        return ReplyEmbed(description=f"set cfg.{scope}{key} to {value}")
 
 
 def maybe_int(s: str) -> str | int:
