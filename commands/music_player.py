@@ -34,6 +34,7 @@ from models.reply_embeds import ReplyEmbed
 
 COOKIES_ENV = "TOROMI_COOKIES_FILE"
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+STREAM_TTL = 3600  # seconds a resolved stream URL is considered fresh
 
 
 def _clean_err(err: object) -> str:
@@ -175,10 +176,18 @@ class Track:
     async def get_stream(self):
         if (
             self.memoized_stream is not None
-            and self.stream_timestamp - perf_counter() < 3600
+            and perf_counter() - self.stream_timestamp < STREAM_TTL
             and not self.already_played
         ):
             return self.memoized_stream, None
+
+        # A memoized source past its TTL likely points at an expired URL;
+        # drop it so fetch_source re-resolves a fresh one.
+        if (
+            self.memoized_stream is not None
+            and perf_counter() - self.stream_timestamp >= STREAM_TTL
+        ):
+            self.streaming_url = None
 
         if err := await self.fetch_source():
             return (None, err)
@@ -188,16 +197,21 @@ class Track:
 
         return self.memoized_stream, None
 
-    async def seek(self, seek_time=0.0):
-        target = await self.get_stream()
-        assert target[1] is None
+    async def make_source(self, seek_time: float = 0.0) -> SeekableAudioSource:
         assert self.streaming_url is not None
 
-        # Live replace of source is fairly dangerous, but...
-        target[0].real_source = FFmpegPCMAudio(
-            self.streaming_url, before_options=f"-ss {seek_time}"
+        before_options = f"-ss {seek_time}" if seek_time > 0 else None
+        source = SeekableAudioSource(
+            FFmpegPCMAudio(self.streaming_url, before_options=before_options)
         )
-        target[0].play_location = seek_time
+        source.play_location = max(seek_time, 0.0)
+
+        # Keep the memoized source in sync so it is the one cleaned up
+        # when playback ends (and so the TTL reflects this source).
+        self.memoized_stream = source
+        self.stream_timestamp = perf_counter()
+
+        return source
 
 
 @attrs(auto_attribs=True, hash=True)
@@ -351,6 +365,23 @@ class MusicPlaying(commands.Cog):
                 return
 
             self.player_task.cancel()
+
+        async def seek(self, seconds: float):
+            track = self.now_playing
+            if track is None:
+                raise ValueError("Nothing is playing currently.")
+
+            if track.streaming_url is None:
+                if err := await track.fetch_source():
+                    raise RuntimeError(err)
+
+            source = await track.make_source(seconds)
+
+            # Thread-safe swap: discord.py pauses, replaces the source, then
+            # resumes under the audio player's lock, instead of mutating the
+            # live source's real_source from another thread.
+            self.voice_client.source = source
+            self.cur_source = source
 
         async def disconnect(self):
             aio.create_task(self.voice_client.disconnect(force=True))
@@ -539,7 +570,7 @@ class MusicPlaying(commands.Cog):
                 player.queue.appendleft(result)
             await player.start()
 
-    @commands.command(aliases=["prev"])
+    @commands.command(aliases=["prev", "last", "back"])
     @commands.guild_only()
     async def previous(self, ctx: commands.Context):
         """Play previously played song next"""
@@ -572,7 +603,7 @@ class MusicPlaying(commands.Cog):
 
         player.voice_client.pause()
 
-    @commands.command()
+    @commands.command(aliases=["up"])
     @commands.guild_only()
     async def unpause(self, ctx: commands.Context):
         """Unpause player"""
@@ -587,7 +618,7 @@ class MusicPlaying(commands.Cog):
 
         player.voice_client.resume()
 
-    @commands.command(aliases=["s"])
+    @commands.command(aliases=["s", "next"])
     @commands.guild_only()
     async def skip(self, ctx: commands.Context, to_skip_str: str | None):
         """Skip songs in the queue. Accepts ranges like 2-10."""
@@ -642,8 +673,8 @@ class MusicPlaying(commands.Cog):
 
     @commands.command()
     @commands.guild_only()
-    async def seek(self, ctx: commands.Context, *, target_second: float):
-        """Seek playback in the song to specified second"""
+    async def seek(self, ctx: commands.Context, *, target_time: str):
+        """Seek playback in the song to specified time"""
         assert ctx.guild is not None
 
         if (triplet := await self.vc_guard(ctx)) is not None:
@@ -655,12 +686,42 @@ class MusicPlaying(commands.Cog):
             await text_channel.send("Nothing is playing currently.")
             return
 
-        target_second = max(target_second, 0)
+        # convert target_time to seconds
+        splt = target_time.split(":")
+        target_seconds = 0
+        match(len(splt)):
+            case 1:
+                try:
+                    target_seconds = int(splt[0])
+                except ValueError:
+                    await text_channel.send("Not a valid time")
+                    return
+            case 2:
 
-        await player.now_playing.seek(target_second)
+                try:
+                    m, s = [int(x) for x in splt]
+                    if s > 59 or m > 59:
+                        await text_channel.send("Not a valid time")
+                        return
+                    target_seconds = m * 60 + s
+                except ValueError:
+                    await text_channel.send("Not a valid time")
+                    return
+            case _:
+                await text_channel.send("Not a valid time")
+                return
+            
+        target_second = max(target_seconds, 0)
+
+        try:
+            await player.seek(target_second)
+        except (ValueError, RuntimeError) as e:
+            await text_channel.send(f"Unable to seek: {e}")
+            return
+
         await text_channel.send(f"Seeking to {target_second:.0f}s")
 
-    @commands.command()
+    @commands.command(aliases=["v"])
     @commands.guild_only()
     async def volume(self, ctx: commands.Context, *, volume: int):
         """Set volume of current song from 0 to 200."""
@@ -868,7 +929,7 @@ class MusicPlaying(commands.Cog):
 
         await text_channel.send(embed=historyEmbed)
 
-    @commands.command()
+    @commands.command(aliases=["random"])
     @commands.guild_only()
     async def shuffle(self, ctx: commands.Context):
         assert ctx.guild
