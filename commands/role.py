@@ -31,7 +31,7 @@ class Role(commands.Cog):
         permissions = ctx.author.guild_permissions
         has_permissions = permissions.administrator or permissions.manage_roles
 
-        ids = list(map(lambda r: r.id, await self.blacklist_dao.get_all()))
+        ids = [r.id for r in await self.blacklist_dao.get_all()]
         roles = filter(lambda r: (r.id not in ids) or has_permissions, ctx.guild.roles)
         roles = filter(lambda r: not r.is_bot_managed(), roles)
 
@@ -93,7 +93,7 @@ class Role(commands.Cog):
 
 # FIXME: a more elegant pagination solution maybe?
 async def list_roles(ctx: commands.Context, roles: list[DiscordRole]):
-    names_only = list(map(lambda x: x.name, roles))
+    names_only = [x.name for x in roles]
 
     per_page = 6
     pages = math.ceil(len(roles) / per_page)

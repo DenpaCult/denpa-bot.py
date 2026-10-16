@@ -1,0 +1,10 @@
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS cringecfg (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    guild_id INTEGER NOT NULL UNIQUE,
+    threshold INTEGER DEFAULT 5,
+    channel_id INTEGER,
+    expire_time INTEGER DEFAULT 1200,
+    timeout_time INTEGER DEFAULT 606
+);
+"""
