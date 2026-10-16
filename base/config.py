@@ -1,9 +1,7 @@
-import json
 from asyncio import Lock
-from os import makedirs, replace
 from pathlib import Path
 
-from attr import asdict, define, field
+from attr import define, field, fields, has
 
 from base.database import Database, db
 from dao.dao import BaseDAO
@@ -15,7 +13,8 @@ class ConfigDao(BaseDAO):
 
     async def load(self, guild_id: int) -> "GuildConfig":
         # unless we switch to ORM I can't think of a better way
-        query = await self.fetch_one("""
+        query = await self.fetch_one(
+            """
             SELECT
                 g.tplaylist,
                 g.koko_role,
@@ -46,24 +45,18 @@ class ConfigDao(BaseDAO):
             JOIN cringecfg AS c ON g.guild_id = c.guild_id
             JOIN deleteguardcfg as d on g.guild_id = d.guild_id
             WHERE g.guild_id = ?;
-                                """, (guild_id,))
+                                """,
+            (guild_id,),
+        )
 
         return GuildConfig(
-                emoji=Emoji(
-                      *query[2:16]
-                    ),
-                tplaylist=query[0],
-                koko_role=query[1],
-                wood=Wood(
-                      *query[16:18]
-                    ),
-                cringe=Cringe(
-                      *query[18:22]
-                    ),
-                delete_guard=DeleteGuard(
-                      query[22]
-                    )
-                )
+            emoji=Emoji(*query[2:16]),
+            tplaylist=query[0],
+            koko_role=query[1],
+            wood=Wood(*query[16:18]),
+            cringe=Cringe(*query[18:22]),
+            delete_guard=DeleteGuard(query[22]),
+        )
 
 
 @define
@@ -118,62 +111,90 @@ class GuildConfig:
 class Config:
     _instances: dict[int, GuildConfig] = {}  # key is guild_id
     _locks: dict[int, Lock] = {}
+    _lock: Lock = Lock()
 
     _base_path = Path("persist/config")
+    _dao = ConfigDao(db=db)
+
+    _TABLE_MAP = {
+        "guildcfg": "guildcfg",
+        "emoji": "emojicfg",
+        "wood": "woodcfg",
+        "cringe": "cringecfg",
+        "delete_guard": "deleteguardcfg",
+    }
 
     @classmethod
     async def load(cls, guild_id: int) -> GuildConfig:
         # TODO: init the config dbs if they don't exist
-        async with cls._lock(guild_id):
+        async with cls._lock:
             if guild_id in cls._instances:
                 return cls._instances[guild_id]
 
-        path = cls._base_path / f"{guild_id}.json"
+        cfg = await cls._dao.load(guild_id)
 
-        dao = ConfigDao(db=db)
-        cfg = await dao.load(guild_id)
+        cls._instances[guild_id] = cfg
 
-        if not path.exists():
-            # cfg = GuildConfig()
-            # async with cls._lock(guild_id):
-            #     cls._instances[guild_id] = cfg
-            # await cls.save(guild_id)
-            
-            return cfg
-
-        # async with cls._lock(guild_id):
-        #     with open(path, encoding="utf-8") as f:
-        #         raw = json.load(f)
-
-        #     cfg = cls._guild_from_dict(raw)
-        #     cls._instances[guild_id] = cfg
-
-
-        dao = ConfigDao(db=db)
-
-        return await dao.load(guild_id)
+        return cfg
 
     @classmethod
-    async def save(cls, guild_id: int):
-        # TODO: make proper classes for configDAOs
-        # and save appropriately in the database
-        async with cls._lock(guild_id):
-            if guild_id not in cls._instances:
-                raise KeyError("Guild config not loaded")
+    async def update_db(
+        cls, guild_id: int, db_name: str | None, key: str | None, value: str | None
+    ):
+        async with cls._lock:
+            cfg = cls._instances.get(guild_id, GuildConfig())
+            if db_name:
+                cfg = getattr(cfg, db_name)
 
-            cfg = cls._instances[guild_id]
-            path = cls._base_path / f"{guild_id}.json"
-            tmp = path.with_suffix(".json.tmp")
+            if key is not None and value is not None:
+                cols = {
+                    f.name
+                    for f in fields(type(cfg))
+                    if not has(type(getattr(cfg, f.name)))
+                }
+                if key not in cols:
+                    raise KeyError(f"Unknown config key: {key}")
 
-            makedirs(cls._base_path, exist_ok=True)
+                table = cls._TABLE_MAP[db_name or "guildcfg"]
+                await cls._dao.write(
+                    f"UPDATE {table} SET {key} = ? WHERE guild_id = ?",
+                    (value, guild_id),
+                )
+                return
 
-            with tmp.open("w", encoding="utf-8") as f:
-                json.dump(asdict(cfg), f, indent=4, ensure_ascii=False)
-
-            replace(tmp, path)
+            await cls._upsert_section(guild_id, db_name or "guildcfg", cfg)
 
     @classmethod
-    def _lock(cls, guild_id: int) -> Lock:
+    async def _upsert_section(cls, guild_id: int, db_name: str, cfg) -> None:
+        table = cls._TABLE_MAP[db_name]
+
+        cols: list[str] = []
+        vals: list = []
+        for f in fields(type(cfg)):
+            v = getattr(cfg, f.name)
+            if has(type(v)):
+                continue
+            cols.append(f.name)
+            vals.append(v)
+
+        placeholders = ", ".join("?" for _ in cols)
+        updates = ", ".join(f"{c} = excluded.{c}" for c in cols)
+        await cls._dao.write(
+            f"""
+            INSERT INTO {table} (guild_id, {", ".join(cols)})
+            VALUES (?, {placeholders})
+            ON CONFLICT(guild_id) DO UPDATE SET {updates}
+            """,
+            (guild_id, *vals),
+        )
+
+        for f in fields(type(cfg)):
+            v = getattr(cfg, f.name)
+            if has(type(v)):
+                await cls._upsert_section(guild_id, f.name, v)
+
+    @classmethod
+    def _lock_(cls, guild_id: int) -> Lock:
         if guild_id not in cls._locks:
             cls._locks[guild_id] = Lock()
         return cls._locks[guild_id]
