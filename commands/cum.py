@@ -5,6 +5,7 @@ from base.config import Config
 from base.database import db
 from dao.cum_dao import CumDAO
 from models.cum import Cum
+from models.reply_embeds import ReplyEmbed
 
 class Cum_cmd(commands.Cog):
     def __init__(self, bot):
@@ -29,11 +30,24 @@ class Cum_cmd(commands.Cog):
 
 
         if not member or cummee_id == cummer_id:
-            await ctx.send(f"Oh no! {ctx.author.mention} has cummed on themselves! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}")
+            # await ctx.send(f"Oh no! {ctx.author.mention} has cummed on themselves! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}")
+
+            await ctx.send(
+                    embed=ReplyEmbed(
+                        description=f"Oh no! {ctx.author.mention} has cummed on themselves! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}"
+                        )
+                    )
+
             await self.dao.add(Cum(cummer_id, cummer_id))
             return
 
-        await ctx.send(f"Oh no! {ctx.author.mention} has cummed on {member.mention}! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}")
+        # await ctx.send(f"Oh no! {ctx.author.mention} has cummed on {member.mention}! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}")
+
+        await ctx.send(
+                embed=ReplyEmbed(
+                    description="Oh no! {ctx.author.mention} has cummed on {member.mention}! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}"
+                    )
+                )
 
         await self.dao.add(Cum(cummer_id, cummee_id))
 
