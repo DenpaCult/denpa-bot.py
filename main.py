@@ -12,8 +12,16 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
+intents = discord.Intents.none()
+intents.guilds = True
+intents.guild_messages = True
+intents.guild_reactions = True
+intents.members = True
+intents.message_content = True
+intents.emojis = True
+
 bot = commands.Bot(
-    command_prefix=os.environ["TOROMI_PREFIX"], intents=discord.Intents.all(), max_messages=1000
+    command_prefix=os.environ["TOROMI_PREFIX"], intents=intents, max_messages=1000
 )
 
 async def load_extentions(folder: str):
