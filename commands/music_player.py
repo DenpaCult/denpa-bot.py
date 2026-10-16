@@ -1,18 +1,20 @@
 import asyncio as aio
 import datetime
-import json
 import logging
+import os
 import random
-from asyncio.subprocess import PIPE, create_subprocess_exec
+import re
 from collections import deque
 from collections.abc import Sequence
 from enum import Enum
 from io import StringIO
 from math import ceil
+from pathlib import Path
 from time import perf_counter
 from typing import Literal, Self
 
 import audioop
+import yt_dlp
 from attr import attrib, attrs
 from discord import (
     AudioSource,
@@ -26,8 +28,35 @@ from discord import (
 )
 from discord.ext import commands
 from discord.ext.commands.bot import Bot
+from yt_dlp.utils import DownloadError
 
 from models.reply_embeds import ReplyEmbed
+
+COOKIES_ENV = "TOROMI_COOKIES_FILE"
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _clean_err(err: object) -> str:
+    """Strip ANSI escape codes so errors render cleanly in Discord."""
+    return ANSI_RE.sub("", str(err))
+
+
+def _ydl_opts(*, flat: bool) -> dict:
+    """yt-dlp options; uses a shipped cookies.txt when present."""
+    opts: dict = {
+        "quiet": True,
+        "no_warnings": True,
+        "color": "never",
+        "format": "bestaudio/best",
+        "extract_flat": "in_playlist" if flat else False,
+        "logger": logging.getLogger("yt-dlp"),
+    }
+
+    cookies = os.environ.get(COOKIES_ENV)
+    if cookies and Path(cookies).is_file():
+        opts["cookiefile"] = cookies
+
+    return opts
 
 
 @attrs(auto_attribs=True)
@@ -74,57 +103,38 @@ class Track:
             ) -> Self | list[Self]:
         logger = logging.getLogger("yt-dlp")
 
+        def _extract():
+            with yt_dlp.YoutubeDL(_ydl_opts(flat=True)) as ydl:
+                return ydl.extract_info(url, download=False)
+
         try:
-            process = await create_subprocess_exec(
-                "yt-dlp",
-                "--dump-single-json",
-                "--no-warnings",
-                "--simulate",
-                "--prefer-free-formats",
-                "--skip-download",
-                "--cookies-from-browser",
-                "firefox",
-                "-f",
-                "ba/ba",
-                "--flat-playlist",
-                url,
-                stdout=PIPE,
-                stderr=PIPE,
-            )
-        except Exception:
-            logging.getLogger("yt-dlp").exception("Failed to start yt-dlp")
-            raise
+            metadata = await aio.to_thread(_extract)
+        except DownloadError as e:
+            logger.error(f"Error while running yt-dlp: {e}")
+            raise RuntimeError(f"yt-dlp error: {_clean_err(e)}") from e
 
-        assert process.stdout is not None
-        assert process.stderr is not None
-
-        output = (await process.stdout.read()).decode("utf-8")
-        if output == "":
-            # Error
-            error_dump = (await process.stderr.read()).decode("utf-8")
-            logger.error(f"Error while running yt-dlp: {error_dump}")
-            raise RuntimeError("yt-dlp error", error_dump)
+        if not metadata:
+            logger.error("yt-dlp returned no data")
+            raise RuntimeError("yt-dlp returned no data")
 
         # To determine if this is a playlist,
         # we just check if `entries` exist or not.
-        metadata = json.loads(output)
-        is_playlist = "entries" in metadata
-
         try:
-            if is_playlist:
+            if "entries" in metadata:
                 result = [
                     cls(
-                        title=entry.get("title", "Unknown title"),
-                        webpage_url=entry["url"],
+                        title=entry.get("title") or "Unknown title",
+                        webpage_url=entry.get("webpage_url") or entry["url"],
                         duration=entry.get("duration"),
                         requested_by=requested_by,
                         streaming_url=None,
                     )
                     for entry in metadata["entries"]
+                    if entry
                 ]
             else:
                 result = cls(
-                    title=metadata.get("title", "Unknown title"),
+                    title=metadata.get("title") or "Unknown title",
                     webpage_url=metadata["webpage_url"],
                     streaming_url=metadata["url"],
                     duration=metadata.get("duration"),
@@ -138,34 +148,21 @@ class Track:
 
     async def fetch_source(self):
         if self.streaming_url is None:
+            def _extract():
+                with yt_dlp.YoutubeDL(_ydl_opts(flat=False)) as ydl:
+                    return ydl.extract_info(self.webpage_url, download=False)
+
             try:
-                process = await create_subprocess_exec(
-                    "yt-dlp",
-                    "--cookies-from-browser",
-                    "firefox",
-                    "--dump-single-json",
-                    "--simulate",
-                    "--no-warnings",
-                    "-x",
-                    "--audio-format",
-                    "opus",
-                    "-f",
-                    "ba/ba",
-                    self.webpage_url,
-                    stdout=PIPE,
-                    stderr=PIPE,
+                result = await aio.to_thread(_extract)
+            except DownloadError as e:
+                logging.getLogger("yt-dlp").error(
+                    "Error while running yt-dlp: %s", e
                 )
-            except Exception:
-                logging.getLogger("yt-dlp").exception("Failed to start yt-dlp")
-                raise
+                return _clean_err(e)
 
-            assert process.stderr
+            if not result:
+                return "yt-dlp returned no data"
 
-            if err := (await process.stderr.read()).decode("utf-8"):
-                return err
-
-            assert process.stdout is not None
-            result = json.loads((await process.stdout.read()).decode("utf-8"))
             self.streaming_url = result["url"]
 
         assert self.streaming_url is not None
@@ -776,7 +773,7 @@ class MusicPlaying(commands.Cog):
                 if track.duration < 3600:
                     dur_string = dur_string.removeprefix("0:")
 
-                return (f"{track_num + per_page * page}: [{track.title}]"
+                return (f"{track_num + (per_page * (page - 1))}: [{track.title}]"
                         f"({track.webpage_url}) ~ {dur_string} ~ "
                         f"{track.requested_by.mention}")
 
@@ -919,11 +916,7 @@ class MusicPlaying(commands.Cog):
 
     @commands.command()
     async def version(self, ctx: commands.Context):
-        process = await create_subprocess_exec(
-                  "yt-dlp", "--version", stdout=PIPE, stderr=PIPE
-                )
-        assert process.stdout is not None
-        await ctx.reply((await process.stdout.read()).decode("utf-8"))
+        await ctx.reply(yt_dlp.version.__version__)
 
 
 async def setup(bot):

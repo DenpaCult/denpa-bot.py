@@ -19,6 +19,7 @@ intents.guild_reactions = True
 intents.members = True
 intents.message_content = True
 intents.emojis = True
+intents.voice_states = True
 
 bot = commands.Bot(
     command_prefix=os.environ["TOROMI_PREFIX"], intents=intents, max_messages=1000
