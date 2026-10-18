@@ -1,10 +1,5 @@
-"""
-"CREATE TABLE cum (
-	cummer_id INTEGER NOT NULL,
-	cummed_on_id INTEGER NOT NULL
-);
-"""
 import logging
+
 from base.database import Database
 from dao.dao import BaseDAO
 from models.cum import Cum
@@ -15,48 +10,58 @@ class CumDAO(BaseDAO):
         BaseDAO.__init__(self, db)
         self.logger = logging.getLogger(__name__)
 
-    async def add(self, model: Cum):    
-        await self.write("INSERT INTO cum (cummer_id, cummed_on_id) VALUES(?, ?);", (model.cummer_id, model.cummee_id))
+    async def add(self, model: Cum):
+        await self.write(
+            "INSERT INTO cum (guild_id, cummer_id, cummed_on_id, created_at_ms) VALUES (?, ?, ?, ?);",
+            (model.guild_id, model.cummer_id, model.cummee_id, model.created_at_ms),
+        )
 
-    async def remove(self, model: Cum):
-        await self.write("DELETE FROM cum WHERE cummer_id=? AND cummed_on_id=?", (model.cummer_id, model.cummee_id,))
+    async def get_cummed_count(self, guild_id: int, user_id: int) -> int:
+        """How many times user_id has cummed in guild_id"""
+        return (
+            await self.fetch_one(
+                "SELECT COUNT(*) FROM cum WHERE guild_id = ? AND cummer_id = ?;",
+                (guild_id, user_id),
+            )
+        )[0]
 
-    async def get_all(self) -> list[Cum]:
-        return list(map(lambda x: Cum(x[0],x[1]), await self.fetch_all("SELECT * FROM cum;")))
+    async def get_cummed_on_count(self, guild_id: int, user_id: int) -> int:
+        """How many times user_id has been cummed on in guild_id"""
+        return (
+            await self.fetch_one(
+                "SELECT COUNT(*) FROM cum WHERE guild_id = ? AND cummed_on_id = ?;",
+                (guild_id, user_id),
+            )
+        )[0]
 
-    async def get_cummed_count(self, user_id: int) -> int: # How many times the user has cummed
-        data = await self.fetch_all("SELECT * FROM cum WHERE cummer_id=?", (user_id,))
-        return len(list(map(lambda x: (x[0],x[1]) , data)))
+    async def get_most_cummed_on_user(self, guild_id: int, user_id: int) -> int | None:
+        """might return the id of the user that user_id has cummed on the most in guild_id"""
+        row = await self.fetch_one(
+            """
+            SELECT cummed_on_id
+            FROM cum
+            WHERE guild_id = ? AND cummer_id = ?
+            GROUP BY cummed_on_id
+            ORDER BY COUNT(*) DESC
+            LIMIT 1;
+            """,
+            (guild_id, user_id),
+        )
 
-    async def get_cummed_on_count(self, user_id: int) -> int: # How many times the user has been cummed on
-        data = await self.fetch_all("SELECT * FROM cum WHERE cummed_on_id=?", (user_id,))
-        return len(list(map(lambda x: (x[0],x[1]) , data)))
+        return row[0] if row else None
 
-    async def get_most_cummed_on_user(self, user_id) -> int | None: # person the user has cummed on the most, returns user_id the name should be fetched later
-        data = await self.fetch_all("""
-                               SELECT cummed_on_id
-                               FROM cum
-                               WHERE cummer_id == ?
-                               GROUP BY cummed_on_id
-                               ORDER BY COUNT(cummed_on_id) DESC
-                               LIMIT 1;
-                              """,
-                              (user_id,))
-        data = data[0][0] if data else None
-        return data
+    async def get_most_cummer_on_you(self, guild_id: int, user_id: int) -> int | None:
+        """might return the id of the user that has cummed on user_id the most in guild_id"""
+        row = await self.fetch_one(
+            """
+            SELECT cummer_id
+            FROM cum
+            WHERE guild_id = ? AND cummed_on_id = ?
+            GROUP BY cummer_id
+            ORDER BY COUNT(*) DESC
+            LIMIT 1;
+            """,
+            (guild_id, user_id),
+        )
 
-    async def get_most_cummer_on_you(self, user_id) -> int | None: # person that has cummed on the user the most, returns user_id the name should be fetched later
-        data = await self.fetch_all("""
-                               SELECT cummer_id
-                               FROM cum
-                               WHERE cummed_on_id == ?
-                               GROUP BY cummer_id
-                               ORDER BY COUNT(cummer_id) DESC
-                               LIMIT 1;
-                              """,
-                              (user_id,))
-        data = data[0][0] if data else None
-        return data
-
-    # is this gonna be required
-    # def get_cummed_on_user_count(self, user_id: int, member_id: int): # How many times the user has cummed on a specific member
+        return row[0] if row else None

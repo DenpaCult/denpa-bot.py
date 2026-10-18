@@ -1,18 +1,17 @@
+from dataclasses import dataclass
+
 from discord import Role
 
 
+@dataclass
 class BlacklistRole:
     """
-    blacklisted roles for role command
+    Roles which are not alllowed to be added/removed using ;;role
     """
+
+    id: int
+    guild_id: int
 
     @classmethod
     def from_role(cls, role: Role):
-        return cls(role.id)
-
-    @classmethod
-    def from_database(cls, item: tuple[int, int]):
-        return cls(item[1])
-
-    def __init__(self, id: int):
-        self.id: int = id
+        return cls(role.id, role.guild.id)

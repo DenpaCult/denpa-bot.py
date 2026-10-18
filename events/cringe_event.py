@@ -1,14 +1,21 @@
-import traceback
 import logging
+import traceback
+from datetime import UTC, datetime, timedelta
 
-from datetime import timedelta, datetime, timezone
+from discord import (
+    Forbidden,
+    HTTPException,
+    Member,
+    RawReactionActionEvent,
+    TextChannel,
+)
 from discord.ext.commands import Bot, Cog
-from discord import RawReactionActionEvent, TextChannel, Member
+
 from base.config import Config
 from base.database import db
+from base.utils import msg_embed
 from dao.cringe_dao import CringeDAO
 from models.cringe import CringeMessage
-from base.utils import msg_embed
 
 # TODO: DRY. Make ;;wood and ;;cringe reuse a decent amt. of code
 
@@ -55,7 +62,7 @@ class CringeEvent(Cog):
             self.logger.info(f"{guild}: {message.author.name} tried muting themselves")
             return
 
-        elapsed = datetime.now(tz=timezone.utc) - message.created_at
+        elapsed = datetime.now(tz=UTC) - message.created_at
         expireTime = cfg.cringe.expire_time
 
         if elapsed.seconds >= expireTime:  # created_at returns time in utc
@@ -68,27 +75,23 @@ class CringeEvent(Cog):
             f"{guild}: {payload.member.name} thinks {message.author.name} is cringe"
         )
 
-        already_cringed = self.dao.get_one(CringeMessage.from_message(message))
-        if already_cringed:
-            return
-
-        cringe_count = list(
-            filter(lambda x: str(x.emoji) == target_emoji, message.reactions)
-        )[0].count
+        cringe_count = next(filter(lambda x: str(x.emoji) == target_emoji, message.reactions)).count
 
         if cringe_count >= cfg.cringe.threshold:
-            base = timedelta(seconds=cfg.cringe.timeout_time)
+            # counted before add() so the current message isn't included
             offences = await self.dao.count(payload.guild_id, message.author.id)
 
+            if not await self.dao.add(CringeMessage.from_message(message)):
+                return
+
+            base = timedelta(seconds=cfg.cringe.timeout_time)
             multiplier = max((offences + 1) - 5, 0) # current past 5
             total = base + timedelta(seconds=2 * multiplier)
 
             try:
                 await message.author.timeout(total)
-            except Exception as _:
+            except (Forbidden, HTTPException, TypeError, ValueError):
                 self.logger.error(traceback.format_exc())
-
-            await self.dao.add(CringeMessage.from_message(message))
 
             self.logger.info(
                 f"{guild}: offence #{offences + 1}. timed out {message.author} for {total.seconds}s"
@@ -111,4 +114,4 @@ async def guild_name(bot: Bot, payload: RawReactionActionEvent) -> str:
     if payload.guild_id is not None:
         return f"[{(await bot.fetch_guild(payload.guild_id)).name}]"
     else:
-        return str("[NOT GUILD]")
+        return "[NOT GUILD]"

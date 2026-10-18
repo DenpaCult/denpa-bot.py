@@ -30,7 +30,6 @@ class DeleteGuard(commands.Cog):
             case "add":
                 assert member
                 await self.dao.add(GuardedUser.from_member(member))
-                # await ctx.send(f"added {args[0].name} to delete guard.")
                 await ctx.send(
                         embed=_embed.set_description(
                             f"added {member.name} to delete guard."
@@ -40,7 +39,6 @@ class DeleteGuard(commands.Cog):
             case "remove":
                 assert member
                 await self.dao.remove(GuardedUser.from_member(member))
-                # await ctx.send(f"removed {member.name} from delete guard.")
                 await ctx.send(
                         embed=_embed.set_description(
                             f"removed {member.name} from delete guard."
@@ -48,9 +46,9 @@ class DeleteGuard(commands.Cog):
                         )
 
             case "list":
-                ids = list(map(lambda x: x.id, await self.dao.get_all(ctx.guild.id)))
+                ids = [x.id for x in await self.dao.get_all(ctx.guild.id)]
                 members = filter(lambda m: m.id in ids, ctx.guild.members)
-                names = list(map(lambda m: m.name, members))
+                names = [m.name for m in members]
 
                 # TODO: embed
                 out = ", ".join(names) if names else "no guarded users"

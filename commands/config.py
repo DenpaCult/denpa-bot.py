@@ -1,4 +1,5 @@
 import logging
+from sqlite3 import IntegrityError
 
 from attrs import asdict, has
 from discord.ext import commands
@@ -107,9 +108,11 @@ class ConfigCommand(commands.Cog):
             return ReplyEmbed.Error(
                 description=f"{scope}{key} is not a property of GuildConfig"
             )
-
-        target = getattr(cfg, db_name) if db_name else cfg
-        setattr(target, key, value)  # keep the cached _instances entry in sync
+        except IntegrityError:
+            scope = f"{db_name}." if db_name else ""
+            return ReplyEmbed.Error(
+                description=f"{value} is not a valid value for {scope}{key}"
+            )
 
         scope = f"{db_name}." if db_name else ""
         return ReplyEmbed(description=f"set cfg.{scope}{key} to {value}")

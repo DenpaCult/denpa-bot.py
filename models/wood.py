@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from discord import Message
 
 # TODO: maybe author_id for some cool stats?
@@ -16,7 +17,3 @@ class WoodMessage:
         assert message.guild is not None
 
         return cls(message.id, message.guild.id)
-
-    @classmethod
-    def from_database(cls, item: tuple[int, int, int]):
-        return cls(item[1], item[2])

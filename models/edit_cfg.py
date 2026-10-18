@@ -1,27 +1,30 @@
-from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+
+@dataclass
+class EditRule:
+    """ping these roles when a message is edited at least threshold_s seconds after it was posted"""
+
+    threshold_s: int
+    role_ids: list[int] = field(default_factory=list)
 
 
 @dataclass
 class EditCfg:
     """
-    Config model in the db for the "old messages" edit event
+    Settings for old message edit reporting
     """
 
-    id: int
     guild_id: int
-    time_limit_h: int  # hours
-    report_channel_id: int
-    mention_list: Sequence[str]
-    ignore_roles: Sequence[str]
+    enabled: bool
+    report_channel_id: int | None
+    rules: list[EditRule] = field(default_factory=list)
+    exempt_role_ids: set[int] = field(default_factory=set)
 
-    @classmethod
-    def from_database(cls, item: tuple[int, int, int, int, str, str]):
-        return cls(
-            item[0],
-            item[1],
-            item[2],
-            item[3],
-            item[4].split(", ") if item[4] else [],
-            item[5].split(", ") if item[5] else [],
-        )
+    def rule_for(self, age_s: float) -> EditRule | None:
+        """the rule with the largest threshold that a message of this age has passed, if any"""
+        passed = [rule for rule in self.rules if age_s >= rule.threshold_s]
+
+
+        # FIXME(kajo): is this lint superfluous?
+        return max(passed, key=lambda rule: rule.threshold_s, default=None)  # ty: ignore[unresolved-attribute]
