@@ -1,0 +1,10 @@
+cookies.txt
+*.cookies.txt
+.env
+.venv/
+.git/
+*.db
+*.log
+.mypy_cache/
+.pyre/
+__pycache__/

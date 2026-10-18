@@ -1,18 +1,20 @@
 import asyncio as aio
 import datetime
-import json
 import logging
+import os
 import random
-from asyncio.subprocess import PIPE, create_subprocess_exec
+import re
 from collections import deque
 from collections.abc import Sequence
 from enum import Enum
 from io import StringIO
 from math import ceil
+from pathlib import Path
 from time import perf_counter
 from typing import Literal, Self
 
 import audioop
+import yt_dlp
 from attr import attrib, attrs
 from discord import (
     AudioSource,
@@ -26,8 +28,36 @@ from discord import (
 )
 from discord.ext import commands
 from discord.ext.commands.bot import Bot
+from yt_dlp.utils import DownloadError
 
 from models.reply_embeds import ReplyEmbed
+
+COOKIES_ENV = "TOROMI_COOKIES_FILE"
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+STREAM_TTL = 3600  # seconds a resolved stream URL is considered fresh
+
+
+def _clean_err(err: object) -> str:
+    """Strip ANSI escape codes so errors render cleanly in Discord."""
+    return ANSI_RE.sub("", str(err))
+
+
+def _ydl_opts(*, flat: bool) -> dict:
+    """yt-dlp options; uses a shipped cookies.txt when present."""
+    opts: dict = {
+        "quiet": True,
+        "no_warnings": True,
+        "color": "never",
+        "format": "bestaudio/best",
+        "extract_flat": "in_playlist" if flat else False,
+        "logger": logging.getLogger("yt-dlp"),
+    }
+
+    cookies = os.environ.get(COOKIES_ENV)
+    if cookies and Path(cookies).is_file():
+        opts["cookiefile"] = cookies
+
+    return opts
 
 
 @attrs(auto_attribs=True)
@@ -74,57 +104,38 @@ class Track:
             ) -> Self | list[Self]:
         logger = logging.getLogger("yt-dlp")
 
+        def _extract():
+            with yt_dlp.YoutubeDL(_ydl_opts(flat=True)) as ydl:
+                return ydl.extract_info(url, download=False)
+
         try:
-            process = await create_subprocess_exec(
-                "yt-dlp",
-                "--dump-single-json",
-                "--no-warnings",
-                "--simulate",
-                "--prefer-free-formats",
-                "--skip-download",
-                "--cookies-from-browser",
-                "firefox",
-                "-f",
-                "ba/ba",
-                "--flat-playlist",
-                url,
-                stdout=PIPE,
-                stderr=PIPE,
-            )
-        except Exception:
-            logging.getLogger("yt-dlp").exception("Failed to start yt-dlp")
-            raise
+            metadata = await aio.to_thread(_extract)
+        except DownloadError as e:
+            logger.error(f"Error while running yt-dlp: {e}")
+            raise RuntimeError(f"yt-dlp error: {_clean_err(e)}") from e
 
-        assert process.stdout is not None
-        assert process.stderr is not None
-
-        output = (await process.stdout.read()).decode("utf-8")
-        if output == "":
-            # Error
-            error_dump = (await process.stderr.read()).decode("utf-8")
-            logger.error(f"Error while running yt-dlp: {error_dump}")
-            raise RuntimeError("yt-dlp error", error_dump)
+        if not metadata:
+            logger.error("yt-dlp returned no data")
+            raise RuntimeError("yt-dlp returned no data")
 
         # To determine if this is a playlist,
         # we just check if `entries` exist or not.
-        metadata = json.loads(output)
-        is_playlist = "entries" in metadata
-
         try:
-            if is_playlist:
+            if "entries" in metadata:
                 result = [
                     cls(
-                        title=entry.get("title", "Unknown title"),
-                        webpage_url=entry["url"],
+                        title=entry.get("title") or "Unknown title",
+                        webpage_url=entry.get("webpage_url") or entry["url"],
                         duration=entry.get("duration"),
                         requested_by=requested_by,
                         streaming_url=None,
                     )
                     for entry in metadata["entries"]
+                    if entry
                 ]
             else:
                 result = cls(
-                    title=metadata.get("title", "Unknown title"),
+                    title=metadata.get("title") or "Unknown title",
                     webpage_url=metadata["webpage_url"],
                     streaming_url=metadata["url"],
                     duration=metadata.get("duration"),
@@ -138,34 +149,21 @@ class Track:
 
     async def fetch_source(self):
         if self.streaming_url is None:
+            def _extract():
+                with yt_dlp.YoutubeDL(_ydl_opts(flat=False)) as ydl:
+                    return ydl.extract_info(self.webpage_url, download=False)
+
             try:
-                process = await create_subprocess_exec(
-                    "yt-dlp",
-                    "--cookies-from-browser",
-                    "firefox",
-                    "--dump-single-json",
-                    "--simulate",
-                    "--no-warnings",
-                    "-x",
-                    "--audio-format",
-                    "opus",
-                    "-f",
-                    "ba/ba",
-                    self.webpage_url,
-                    stdout=PIPE,
-                    stderr=PIPE,
+                result = await aio.to_thread(_extract)
+            except DownloadError as e:
+                logging.getLogger("yt-dlp").error(
+                    "Error while running yt-dlp: %s", e
                 )
-            except Exception:
-                logging.getLogger("yt-dlp").exception("Failed to start yt-dlp")
-                raise
+                return _clean_err(e)
 
-            assert process.stderr
+            if not result:
+                return "yt-dlp returned no data"
 
-            if err := (await process.stderr.read()).decode("utf-8"):
-                return err
-
-            assert process.stdout is not None
-            result = json.loads((await process.stdout.read()).decode("utf-8"))
             self.streaming_url = result["url"]
 
         assert self.streaming_url is not None
@@ -178,10 +176,18 @@ class Track:
     async def get_stream(self):
         if (
             self.memoized_stream is not None
-            and self.stream_timestamp - perf_counter() < 3600
+            and perf_counter() - self.stream_timestamp < STREAM_TTL
             and not self.already_played
         ):
             return self.memoized_stream, None
+
+        # A memoized source past its TTL likely points at an expired URL;
+        # drop it so fetch_source re-resolves a fresh one.
+        if (
+            self.memoized_stream is not None
+            and perf_counter() - self.stream_timestamp >= STREAM_TTL
+        ):
+            self.streaming_url = None
 
         if err := await self.fetch_source():
             return (None, err)
@@ -191,16 +197,21 @@ class Track:
 
         return self.memoized_stream, None
 
-    async def seek(self, seek_time=0.0):
-        target = await self.get_stream()
-        assert target[1] is None
+    async def make_source(self, seek_time: float = 0.0) -> SeekableAudioSource:
         assert self.streaming_url is not None
 
-        # Live replace of source is fairly dangerous, but...
-        target[0].real_source = FFmpegPCMAudio(
-            self.streaming_url, before_options=f"-ss {seek_time}"
+        before_options = f"-ss {seek_time}" if seek_time > 0 else None
+        source = SeekableAudioSource(
+            FFmpegPCMAudio(self.streaming_url, before_options=before_options)
         )
-        target[0].play_location = seek_time
+        source.play_location = max(seek_time, 0.0)
+
+        # Keep the memoized source in sync so it is the one cleaned up
+        # when playback ends (and so the TTL reflects this source).
+        self.memoized_stream = source
+        self.stream_timestamp = perf_counter()
+
+        return source
 
 
 @attrs(auto_attribs=True, hash=True)
@@ -354,6 +365,23 @@ class MusicPlaying(commands.Cog):
                 return
 
             self.player_task.cancel()
+
+        async def seek(self, seconds: float):
+            track = self.now_playing
+            if track is None:
+                raise ValueError("Nothing is playing currently.")
+
+            if track.streaming_url is None:
+                if err := await track.fetch_source():
+                    raise RuntimeError(err)
+
+            source = await track.make_source(seconds)
+
+            # Thread-safe swap: discord.py pauses, replaces the source, then
+            # resumes under the audio player's lock, instead of mutating the
+            # live source's real_source from another thread.
+            self.voice_client.source = source
+            self.cur_source = source
 
         async def disconnect(self):
             aio.create_task(self.voice_client.disconnect(force=True))
@@ -542,7 +570,7 @@ class MusicPlaying(commands.Cog):
                 player.queue.appendleft(result)
             await player.start()
 
-    @commands.command(aliases=["prev"])
+    @commands.command(aliases=["prev", "last", "back"])
     @commands.guild_only()
     async def previous(self, ctx: commands.Context):
         """Play previously played song next"""
@@ -575,7 +603,7 @@ class MusicPlaying(commands.Cog):
 
         player.voice_client.pause()
 
-    @commands.command()
+    @commands.command(aliases=["up"])
     @commands.guild_only()
     async def unpause(self, ctx: commands.Context):
         """Unpause player"""
@@ -590,7 +618,7 @@ class MusicPlaying(commands.Cog):
 
         player.voice_client.resume()
 
-    @commands.command(aliases=["s"])
+    @commands.command(aliases=["s", "next"])
     @commands.guild_only()
     async def skip(self, ctx: commands.Context, to_skip_str: str | None):
         """Skip songs in the queue. Accepts ranges like 2-10."""
@@ -645,8 +673,8 @@ class MusicPlaying(commands.Cog):
 
     @commands.command()
     @commands.guild_only()
-    async def seek(self, ctx: commands.Context, *, target_second: float):
-        """Seek playback in the song to specified second"""
+    async def seek(self, ctx: commands.Context, *, target_time: str):
+        """Seek playback in the song to specified time"""
         assert ctx.guild is not None
 
         if (triplet := await self.vc_guard(ctx)) is not None:
@@ -658,12 +686,42 @@ class MusicPlaying(commands.Cog):
             await text_channel.send("Nothing is playing currently.")
             return
 
-        target_second = max(target_second, 0)
+        # convert target_time to seconds
+        splt = target_time.split(":")
+        target_seconds = 0
+        match(len(splt)):
+            case 1:
+                try:
+                    target_seconds = int(splt[0])
+                except ValueError:
+                    await text_channel.send("Not a valid time")
+                    return
+            case 2:
 
-        await player.now_playing.seek(target_second)
+                try:
+                    m, s = [int(x) for x in splt]
+                    if s > 59 or m > 59:
+                        await text_channel.send("Not a valid time")
+                        return
+                    target_seconds = m * 60 + s
+                except ValueError:
+                    await text_channel.send("Not a valid time")
+                    return
+            case _:
+                await text_channel.send("Not a valid time")
+                return
+            
+        target_second = max(target_seconds, 0)
+
+        try:
+            await player.seek(target_second)
+        except (ValueError, RuntimeError) as e:
+            await text_channel.send(f"Unable to seek: {e}")
+            return
+
         await text_channel.send(f"Seeking to {target_second:.0f}s")
 
-    @commands.command()
+    @commands.command(aliases=["v"])
     @commands.guild_only()
     async def volume(self, ctx: commands.Context, *, volume: int):
         """Set volume of current song from 0 to 200."""
@@ -776,7 +834,7 @@ class MusicPlaying(commands.Cog):
                 if track.duration < 3600:
                     dur_string = dur_string.removeprefix("0:")
 
-                return (f"{track_num + per_page * page}: [{track.title}]"
+                return (f"{track_num + (per_page * (page - 1))}: [{track.title}]"
                         f"({track.webpage_url}) ~ {dur_string} ~ "
                         f"{track.requested_by.mention}")
 
@@ -871,7 +929,7 @@ class MusicPlaying(commands.Cog):
 
         await text_channel.send(embed=historyEmbed)
 
-    @commands.command()
+    @commands.command(aliases=["random"])
     @commands.guild_only()
     async def shuffle(self, ctx: commands.Context):
         assert ctx.guild
@@ -919,11 +977,7 @@ class MusicPlaying(commands.Cog):
 
     @commands.command()
     async def version(self, ctx: commands.Context):
-        process = await create_subprocess_exec(
-                  "yt-dlp", "--version", stdout=PIPE, stderr=PIPE
-                )
-        assert process.stdout is not None
-        await ctx.reply((await process.stdout.read()).decode("utf-8"))
+        await ctx.reply(yt_dlp.version.__version__)
 
 
 async def setup(bot):
