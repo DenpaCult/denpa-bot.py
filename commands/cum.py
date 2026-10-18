@@ -1,11 +1,14 @@
 import logging
-from discord.ext import commands
+
 from discord import Member
+from discord.ext import commands
+
 from base.config import Config
 from base.database import db
 from dao.cum_dao import CumDAO
 from models.cum import Cum
 from models.reply_embeds import ReplyEmbed
+
 
 class Cum_cmd(commands.Cog):
     def __init__(self, bot):
@@ -15,7 +18,7 @@ class Cum_cmd(commands.Cog):
 
     @commands.command()
     @commands.guild_only()
-    async def cum(self, ctx: commands.Context, member: Member|None = None):
+    async def cum(self, ctx: commands.Context, member: Member | None = None):
         # put userid and mentioned member id in cum-dao
 
         assert ctx.guild
@@ -28,28 +31,30 @@ class Cum_cmd(commands.Cog):
 
         cfg = await Config.load(ctx.guild.id)
 
+        guild_id = ctx.guild.id
 
         if not member or cummee_id == cummer_id:
-            # await ctx.send(f"Oh no! {ctx.author.mention} has cummed on themselves! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}")
 
             await ctx.send(
                     embed=ReplyEmbed(
-                        description=f"Oh no! {ctx.author.mention} has cummed on themselves! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}"
+                        description=f"Oh no! {ctx.author.mention} has cummed "
+                        f"on themselves! {cfg.emoji.cat1} {cfg.emoji.uwu} "
+                        f":drool: {cfg.emoji.cunny}"
                         )
                     )
 
-            await self.dao.add(Cum(cummer_id, cummer_id))
+            await self.dao.add(Cum(guild_id, cummer_id, cummer_id))
             return
-
-        # await ctx.send(f"Oh no! {ctx.author.mention} has cummed on {member.mention}! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}")
 
         await ctx.send(
                 embed=ReplyEmbed(
-                    description="Oh no! {ctx.author.mention} has cummed on {member.mention}! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}"
+                    description=f"Oh no! {ctx.author.mention} has cummed on "
+                    f"{member.mention}! {cfg.emoji.cat1} {cfg.emoji.uwu} "
+                    f":drool: {cfg.emoji.cunny}"
                     )
                 )
 
-        await self.dao.add(Cum(cummer_id, cummee_id))
+        await self.dao.add(Cum(guild_id, cummer_id, cummee_id))
 
 
 async def setup(bot):
