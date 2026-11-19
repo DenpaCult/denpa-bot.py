@@ -1,10 +1,13 @@
-from discord import Message
+from dataclasses import dataclass
 
+
+@dataclass
 class Cum:
     """
-    Cum object containing the id of cummer and cummee
+    A Cum Event
     """
 
-    def __init__(self, cummer_id: int, cummee_id: int):
-        self.cummer_id: int = cummer_id
-        self.cummee_id: int = cummee_id
+    guild_id: int
+    cummer_id: int
+    cummee_id: int
+    created_at_ms: int | None = None  # will be None for events pre-rewrite

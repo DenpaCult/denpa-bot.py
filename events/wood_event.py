@@ -1,13 +1,14 @@
 import logging
 
-from discord import RawReactionActionEvent, TextChannel, Member
+from discord import Member, RawReactionActionEvent, TextChannel
 from discord.ext.commands import Bot, Cog
+
 from base.config import Config
 from base.database import db
+from base.utils import msg_embed
 from dao.wood_dao import WoodDAO
 from events.cringe_event import guild_name
 from models.wood import WoodMessage
-from base.utils import msg_embed
 
 
 class WoodEvent(Cog):
@@ -43,16 +44,11 @@ class WoodEvent(Cog):
         message = await msg_ch.fetch_message(payload.message_id)
         assert isinstance(message.author, Member)
 
-        already_would = self.dao.get_one(WoodMessage.from_message(message))
-        if already_would:
-            return
-
-        wood_count = list(
-            filter(lambda x: str(x.emoji) == target_emoji, message.reactions)
-        )[0].count
+        wood_count = next(filter(lambda x: str(x.emoji) == target_emoji, message.reactions)).count
 
         if wood_count >= cfg.wood.threshold:
-            await self.dao.add(WoodMessage.from_message(message))
+            if not await self.dao.add(WoodMessage.from_message(message)):
+                return
 
             name = await guild_name(self.bot, payload)
             self.logger.info(

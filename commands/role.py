@@ -1,15 +1,14 @@
 import logging
 import math
 
-from discord import Member, Role as DiscordRole
+from discord import Member
+from discord import Role as DiscordRole
 from discord.ext import commands
-from dao.blacklist_dao import BlacklistDAO
+
 from base.config import Config
 from base.database import db
+from dao.blacklist_dao import BlacklistDAO
 from models.reply_embeds import ReplyEmbed
-
-# FIXME: why this colour?
-COLOUR_BLUE = 0x0099FF
 
 
 class Role(commands.Cog):
@@ -31,7 +30,7 @@ class Role(commands.Cog):
         permissions = ctx.author.guild_permissions
         has_permissions = permissions.administrator or permissions.manage_roles
 
-        ids = [r.id for r in await self.blacklist_dao.get_all()]
+        ids = [r.id for r in await self.blacklist_dao.get_all(ctx.guild.id)]
         roles = filter(lambda r: (r.id not in ids) or has_permissions, ctx.guild.roles)
         roles = filter(lambda r: not r.is_bot_managed(), roles)
 

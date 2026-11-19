@@ -1,11 +1,12 @@
 from discord.ext import commands
 
 from base.database import db
-from base.config import Config
 from dao.cum_dao import CumDAO
 from models.reply_embeds import ReplyEmbed
 
-class cum_stats_command(commands.Cog):
+IMAGE_URL: str = 'https://media.discordapp.net/attachments/856649672117583875/1150930157750722650/F5w7qXvaIAALzwy.png?width=1410&height=1168'
+
+class CumStats(commands.Cog):
     def __init__(self, bot):
         self.bot: commands.Bot = bot
         self.dao = CumDAO(db)
@@ -14,31 +15,33 @@ class cum_stats_command(commands.Cog):
     async def cumstats(self, ctx: commands.Context):
         assert ctx.guild
 
-        cfg = await Config.load(ctx.guild.id)
-
-        cunnyPointPngUrl = 'https://media.discordapp.net/attachments/856649672117583875/1150930157750722650/F5w7qXvaIAALzwy.png?width=1410&height=1168' # the what now?
-
         user = ctx.author
+
         # override if another user is specifeid
         if ctx.message.mentions:
             user = ctx.message.mentions[0]
 
-        most_cummed_on_id = await self.dao.get_most_cummed_on_user(user.id)
+        guild_id = ctx.guild.id
+
+        # Who this user sent the most 'cums' towards
+        most_cummed_on_id = await self.dao.get_most_cummed_on_user(guild_id, user.id)
         most_cummed_on = (await self.bot.fetch_user(most_cummed_on_id)).name if most_cummed_on_id else ""
 
-        most_cummed_on_by_id = await self.dao.get_most_cummer_on_you(user.id)
-        most_cummed_on_by = (await self.bot.fetch_user(most_cummed_on_by_id)).name if most_cummed_on_by_id else ""  # these namings are all too confusing
+        # Who this user received the most 'cums' from
+        most_cummed_on_by_id = await self.dao.get_most_cummer_on_you(guild_id, user.id)
+        most_cummed_on_by = (await self.bot.fetch_user(most_cummed_on_by_id)).name if most_cummed_on_by_id else ""
+
         _embed = ReplyEmbed(
                 description=f"Here are {user.name}'s cum stats!",
                 #).set_author( # i just realised Embed is a builder lol
                 #        name=f"{user.name} | {cfg.emoji.wood} {cfg.emoji.same} tbh",# shouldn't this be changed?
                 #        icon_url=user.display_avatar.url
                 ).set_thumbnail(
-                        url=cunnyPointPngUrl
+                        url=IMAGE_URL
                 ).add_field(
-                        name='# of times cummed', value=await self.dao.get_cummed_count(user.id), inline=True
+                        name='# of times cummed', value=await self.dao.get_cummed_count(guild_id, user.id), inline=True
                 ).add_field(
-                        name='# of times cummed on', value=await self.dao.get_cummed_on_count(user.id), inline=True
+                        name='# of times cummed on', value=await self.dao.get_cummed_on_count(guild_id, user.id), inline=True
                 ).add_field(
                         name='most cummed on user by you', value=most_cummed_on, inline=False
                 ).add_field(
@@ -48,4 +51,4 @@ class cum_stats_command(commands.Cog):
         await ctx.send(embed=_embed)
 
 async def setup(bot):
-    await bot.add_cog(cum_stats_command(bot))
+    await bot.add_cog(CumStats(bot))
