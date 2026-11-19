@@ -1,4 +1,3 @@
-import logging
 import math
 
 from discord import Member
@@ -15,10 +14,6 @@ class Role(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.blacklist_dao = BlacklistDAO(db)
-
-    @property
-    def logger(self):
-        return logging.getLogger(__name__)
 
     @commands.command(aliases=["broadcast", "syntonize", "roles"])
     async def role(self, ctx: commands.Context, *args):

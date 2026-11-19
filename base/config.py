@@ -2,7 +2,7 @@ from asyncio import Lock
 
 from attr import define, fields
 
-from base.database import Database, db
+from base.database import db
 from dao.dao import BaseDAO
 
 
@@ -76,9 +76,6 @@ COLUMNS: dict[tuple[str | None, str], tuple[str, str]] = {
 
 
 class ConfigDao(BaseDAO):
-    def __init__(self, db: Database):
-        BaseDAO.__init__(self, db)
-
     async def ensure(self, guild_id: int):
         """create the server's settings rows with default values, if they don't exist yet"""
         await self.write(

@@ -1,18 +1,8 @@
-import logging
-
-from base.database import Database
 from dao.dao import BaseDAO
 from models.blacklist import BlacklistRole
 
 
 class BlacklistDAO(BaseDAO):
-    def __init__(self, db: Database):
-        BaseDAO.__init__(self, db)
-
-    @property
-    def logger(self):
-        return logging.getLogger(__name__)
-
     async def add(self, model: BlacklistRole) -> bool:
         """returns False if the role was already blacklisted"""
         cur = await self.write(

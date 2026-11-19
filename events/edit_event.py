@@ -65,11 +65,10 @@ class EditEvent(commands.Cog):
 
         guild = message.guild.name if message.guild else payload.guild_id
         author = message.author
-        self.logger.warning(f"[{guild}]: {author.name}'s edit was outside {rule.threshold_s}s window")
-
         is_exempt = bool({role.id for role in author.roles} & _config.exempt_role_ids)
         self.logger.warning(
-            f"[{guild}]: {author.name}'s message will {'NOT ' if is_exempt else ''}be deleted"
+            f"[{guild}]: {author.name}'s edit was outside the {rule.threshold_s}s window, "
+            f"message will {'NOT ' if is_exempt else ''}be deleted"
         )
 
         if not is_exempt:

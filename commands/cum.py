@@ -1,4 +1,3 @@
-import logging
 import time
 
 from discord import Member
@@ -15,42 +14,25 @@ class CumCommand(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.dao = CumDAO(db)
-        self.logger = logging.getLogger(__name__)
 
     @commands.command()
     @commands.guild_only()
-    async def cum(self, ctx: commands.Context, member: Member|None = None):
-        # put userid and mentioned member id in cum-dao
-
+    async def cum(self, ctx: commands.Context, member: Member | None = None):
         assert ctx.guild
 
-        cummer_id = ctx.author.id
-
-        cummee_id = 0
-        if member:
-            cummee_id = member.id
+        # no member means a self cum
+        target = member or ctx.author
+        who = "themselves" if target.id == ctx.author.id else target.mention
 
         cfg = await Config.load(ctx.guild.id)
 
-
-        if not member or cummee_id == cummer_id:
-            await ctx.send(
-                    embed=ReplyEmbed(
-                        description=f"Oh no! {ctx.author.mention} has cummed on themselves! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}"
-                        )
-                    )
-
-            await self.dao.add(Cum(ctx.guild.id, cummer_id, cummer_id, now_ms()))
-            return
-
-
         await ctx.send(
-                embed=ReplyEmbed(
-                    description=f"Oh no! {ctx.author.mention} has cummed on {member.mention}! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}"
-                    )
-                )
+            embed=ReplyEmbed(
+                description=f"Oh no! {ctx.author.mention} has cummed on {who}! {cfg.emoji.cat1} {cfg.emoji.uwu} :drool: {cfg.emoji.cunny}"
+            )
+        )
 
-        await self.dao.add(Cum(ctx.guild.id, cummer_id, cummee_id, now_ms()))
+        await self.dao.add(Cum(ctx.guild.id, ctx.author.id, target.id, now_ms()))
 
 
 def now_ms() -> int:

@@ -13,7 +13,7 @@ class Blacklist(commands.Cog):
         self.dao = BlacklistDAO(db)
 
     @commands.command(aliases=["bl"])
-    @commands.has_permissions(administrator=True, manage_roles=True)
+    @commands.has_permissions(administrator=True)
     async def blacklist(self, ctx: commands.Context, action: str, *args: str):
         assert ctx.guild
 

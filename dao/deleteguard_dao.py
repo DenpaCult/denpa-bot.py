@@ -1,18 +1,8 @@
-import logging
-
-from base.database import Database
 from dao.dao import BaseDAO
 from models.delete_guard import GuardedUser
 
 
 class DeleteGuardDAO(BaseDAO):
-    def __init__(self, db: Database):
-        BaseDAO.__init__(self, db)
-
-    @property
-    def logger(self):
-        return logging.getLogger(__name__)
-
     async def add(self, model: GuardedUser) -> bool:
         """returns False if the user was already guarded"""
         cur = await self.write(

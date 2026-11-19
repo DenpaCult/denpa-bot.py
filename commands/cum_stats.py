@@ -25,17 +25,13 @@ class CumStats(commands.Cog):
 
         # Who this user sent the most 'cums' towards
         most_cummed_on_id = await self.dao.get_most_cummed_on_user(guild_id, user.id)
-        most_cummed_on = (await self.bot.fetch_user(most_cummed_on_id)).name if most_cummed_on_id else ""
 
         # Who this user received the most 'cums' from
         most_cummed_on_by_id = await self.dao.get_most_cummer_on_you(guild_id, user.id)
-        most_cummed_on_by = (await self.bot.fetch_user(most_cummed_on_by_id)).name if most_cummed_on_by_id else ""
 
+        # mentions inside an embed show the user's name without pinging them
         _embed = ReplyEmbed(
                 description=f"Here are {user.name}'s cum stats!",
-                #).set_author( # i just realised Embed is a builder lol
-                #        name=f"{user.name} | {cfg.emoji.wood} {cfg.emoji.same} tbh",# shouldn't this be changed?
-                #        icon_url=user.display_avatar.url
                 ).set_thumbnail(
                         url=IMAGE_URL
                 ).add_field(
@@ -43,12 +39,17 @@ class CumStats(commands.Cog):
                 ).add_field(
                         name='# of times cummed on', value=await self.dao.get_cummed_on_count(guild_id, user.id), inline=True
                 ).add_field(
-                        name='most cummed on user by you', value=most_cummed_on, inline=False
+                        name='most cummed on user by you', value=mention(most_cummed_on_id), inline=False
                 ).add_field(
-                        name='user who cummed on you the most', value=most_cummed_on_by , inline=False
-                )#.set_footer(text='cummies :))', icon_url=cunnyPointPngUrl)
+                        name='user who cummed on you the most', value=mention(most_cummed_on_by_id), inline=False
+                )
 
         await ctx.send(embed=_embed)
+
+
+def mention(user_id: int | None) -> str:
+    return f"<@{user_id}>" if user_id else ""
+
 
 async def setup(bot):
     await bot.add_cog(CumStats(bot))

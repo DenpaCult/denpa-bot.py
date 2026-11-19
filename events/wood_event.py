@@ -7,7 +7,6 @@ from base.config import Config
 from base.database import db
 from base.utils import msg_embed
 from dao.wood_dao import WoodDAO
-from events.cringe_event import guild_name
 from models.wood import WoodMessage
 
 
@@ -50,7 +49,7 @@ class WoodEvent(Cog):
             if not await self.dao.add(WoodMessage.from_message(message)):
                 return
 
-            name = await guild_name(self.bot, payload)
+            name = f"[{message.guild.name}]" if message.guild else "[NOT GUILD]"
             self.logger.info(
                 f"{name}: {message.id} by {message.author} has been added to woodboard"
             )

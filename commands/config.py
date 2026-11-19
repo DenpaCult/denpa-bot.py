@@ -1,4 +1,3 @@
-import logging
 from sqlite3 import IntegrityError
 
 from attrs import asdict, has
@@ -11,10 +10,6 @@ from models.reply_embeds import ReplyEmbed
 class ConfigCommand(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-    @property
-    def logger(self):
-        return logging.getLogger(__name__)
 
     @commands.command(aliases=["cfg"])
     @commands.has_permissions(administrator=True)

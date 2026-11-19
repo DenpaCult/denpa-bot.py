@@ -1,15 +1,8 @@
-import logging
-
-from base.database import Database
 from dao.dao import BaseDAO
 from models.cum import Cum
 
 
 class CumDAO(BaseDAO):
-    def __init__(self, db: Database):
-        BaseDAO.__init__(self, db)
-        self.logger = logging.getLogger(__name__)
-
     async def add(self, model: Cum):
         await self.write(
             "INSERT INTO cum (guild_id, cummer_id, cummed_on_id, created_at_ms) VALUES (?, ?, ?, ?);",

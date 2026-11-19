@@ -21,7 +21,6 @@ class AutoReact(Cog):
             compile_regex("take", cfg.emoji.take),
             compile_regex("same", cfg.emoji.same),
         ]
-        assert message.guild is not None
 
         for pat, emoji in pairs:
             if not pat.search(message.content):

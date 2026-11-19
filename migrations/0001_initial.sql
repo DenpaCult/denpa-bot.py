@@ -5,8 +5,8 @@
 --   cringe.author_id
 --   cum.created_at_ms
 --
--- The music queue isn't persisted yet (commands/music_player.py keeps it in
--- memory). Its tables belong in a later migration, once that's designed.
+-- TODO(hoog): Are we ever gonna persist the music queue? (commands/music_player.py
+--  keeps it in memory)
 
 CREATE TABLE guild_config (
     guild_id                INTEGER PRIMARY KEY,

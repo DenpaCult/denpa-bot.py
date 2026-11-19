@@ -55,7 +55,7 @@ class CringeEvent(Cog):
 
         assert payload.member is not None
 
-        guild = await guild_name(self.bot, payload)
+        guild = f"[{message.guild.name}]" if message.guild else "[NOT GUILD]"
 
         if message.author.id == payload.member.id:
             await message.remove_reaction(reacted_emoji, message.author)
@@ -108,10 +108,3 @@ class CringeEvent(Cog):
 
 async def setup(bot: Bot):
     await bot.add_cog(CringeEvent(bot))
-
-
-async def guild_name(bot: Bot, payload: RawReactionActionEvent) -> str:
-    if payload.guild_id is not None:
-        return f"[{(await bot.fetch_guild(payload.guild_id)).name}]"
-    else:
-        return "[NOT GUILD]"

@@ -1,18 +1,8 @@
-import logging
-
-from base.database import Database
 from dao.dao import BaseDAO
 from models.edit_cfg import EditCfg, EditRule
 
 
 class EditCfgDAO(BaseDAO):
-    def __init__(self, db: Database):
-        BaseDAO.__init__(self, db)
-
-    @property
-    def logger(self):
-        return logging.getLogger(__name__)
-
     async def set_config(self, guild_id: int, enabled: bool, report_channel_id: int | None):
         await self.write(
             """

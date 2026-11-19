@@ -1,18 +1,8 @@
-import logging
-
-from base.database import Database
 from dao.dao import BaseDAO
 from models.cringe import CringeMessage
 
 
 class CringeDAO(BaseDAO):
-    def __init__(self, db: Database):
-        BaseDAO.__init__(self, db)
-
-    @property
-    def logger(self):
-        return logging.getLogger(__name__)
-
     async def add(self, model: CringeMessage) -> bool:
         """returns False if the message was already marked as cringe"""
         cur = await self.write(
