@@ -51,7 +51,7 @@ class ConfigCommand(commands.Cog):
         b += "### Summary\n"
         b += f"{err_count} issues detected. ;;toromi will run "
         b += "in a degraded state." if err_count else "as expected."
-        embed = ReplyEmbed(description=b) if err_count else ReplyEmbed.Error(description=b)
+        embed = ReplyEmbed.Error(description=b) if err_count else ReplyEmbed(description=b)
 
         return embed
 
