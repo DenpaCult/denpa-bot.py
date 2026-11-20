@@ -25,9 +25,17 @@ class CumStats(commands.Cog):
 
         # Who this user sent the most 'cums' towards
         most_cummed_on_id = await self.dao.get_most_cummed_on_user(guild_id, user.id)
+        most_cummed_on = ""
+        if most_cummed_on_id:
+            times = await self.dao.get_pair_count(guild_id, user.id, most_cummed_on_id)
+            most_cummed_on = f"<@{most_cummed_on_id}> ({times})"
 
         # Who this user received the most 'cums' from
         most_cummed_on_by_id = await self.dao.get_most_cummer_on_you(guild_id, user.id)
+        most_cummed_on_by = ""
+        if most_cummed_on_by_id:
+            times = await self.dao.get_pair_count(guild_id, most_cummed_on_by_id, user.id)
+            most_cummed_on_by = f"<@{most_cummed_on_by_id}> ({times})"
 
         # mentions inside an embed show the user's name without pinging them
         _embed = ReplyEmbed(
@@ -39,16 +47,12 @@ class CumStats(commands.Cog):
                 ).add_field(
                         name='# of times cummed on', value=await self.dao.get_cummed_on_count(guild_id, user.id), inline=True
                 ).add_field(
-                        name='most cummed on user by you', value=mention(most_cummed_on_id), inline=False
+                        name='most cummed on user by you', value=most_cummed_on, inline=False
                 ).add_field(
-                        name='user who cummed on you the most', value=mention(most_cummed_on_by_id), inline=False
+                        name='user who cummed on you the most', value=most_cummed_on_by, inline=False
                 )
 
         await ctx.send(embed=_embed)
-
-
-def mention(user_id: int | None) -> str:
-    return f"<@{user_id}>" if user_id else ""
 
 
 async def setup(bot):
