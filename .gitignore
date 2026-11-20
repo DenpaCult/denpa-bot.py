@@ -24,4 +24,6 @@ venv.bak/
 *.log
 *.db
 
+cookies.txt
+
 pyrightconfig.json
