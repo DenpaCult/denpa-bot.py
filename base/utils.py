@@ -1,12 +1,13 @@
 import json
+import logging
 import re
-import requests
-from datetime import datetime, timezone
-from discord import Embed, Message
+from datetime import UTC, datetime
 from urllib.parse import urlparse
-from bs4 import BeautifulSoup
 
-from discord.ext.commands.bot import logging
+import requests
+from bs4 import BeautifulSoup
+from discord import Client, Embed, Message
+from discord.abc import Messageable
 
 URL_REGEX = r"https?://(?:www\.)?(?:[a-zA-Z0-9@:%._+~#=]{1,256}\.)(?:[a-zA-Z0-9()]{1,6})\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)"
 
@@ -14,6 +15,16 @@ COLOUR_SAPWOOD = 0xE8B693
 DUMMY_URL = "https://example.com"
 
 url_regex = re.compile(URL_REGEX)
+
+
+async def message_channel(client: Client, channel_id: int) -> Messageable | None:
+    """
+    If available, returns the message channel that corresponds to the channel_id.
+    This may be a text channel, thread or discord's built-in voice text chat.
+    """
+
+    channel = client.get_channel(channel_id) or await client.fetch_channel(channel_id)
+    return channel if isinstance(channel, Messageable) else None
 
 
 def msg_embed(
@@ -30,7 +41,7 @@ def msg_embed(
         Embed(
             color=COLOUR_SAPWOOD,  # TODO: change colour based on message type
             url=DUMMY_URL,
-            timestamp=datetime.now(tz=timezone.utc),
+            timestamp=datetime.now(tz=UTC),
         )
         .set_author(
             name=author_title,
@@ -46,7 +57,7 @@ def msg_embed(
         main.add_field(name="Link", value=message.jump_url, inline=False)
 
     links: list[str] = url_regex.findall(message.content)
-    attachments: list[str] = list(map(lambda x: x.url, message.attachments))  # ty:ignore[invalid-argument-type]
+    attachments: list[str] = [x.url for x in message.attachments]
 
     # eg. a tweet with multiple images, only one can be the main image
     extra_img_urls = []
@@ -115,9 +126,7 @@ def handle_link(url: str) -> list[str]:
                 return [url]
 
             obj = json.loads(r.text)
-            urls: list[str] = list(
-                map(lambda x: x["url"], obj["tweet"]["media"]["photos"])
-            )
+            urls: list[str] = [x["url"] for x in obj["tweet"]["media"]["photos"]]
 
             return urls
         case "tenor.com":

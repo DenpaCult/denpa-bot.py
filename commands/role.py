@@ -1,15 +1,18 @@
-import logging
 import math
 
-from discord import Member, Role as DiscordRole
+from discord import Member
+from discord import Role as DiscordRole
 from discord.ext import commands
-from dao.blacklist_dao import BlacklistDAO
+
 from base.config import Config
 from base.database import db
+from base.roles import find_roles, is_self_assignable, quote_hint
+from dao.blacklist_dao import BlacklistDAO
 from models.reply_embeds import ReplyEmbed
 
-# FIXME: why this colour?
-COLOUR_BLUE = 0x0099FF
+USAGE = (
+    "use `;;role <name>`, `;;role add <name>`, `;;role remove <name>` or `;;role list`"
+)
 
 
 class Role(commands.Cog):
@@ -17,83 +20,75 @@ class Role(commands.Cog):
         self.bot = bot
         self.blacklist_dao = BlacklistDAO(db)
 
-    @property
-    def logger(self):
-        return logging.getLogger(__name__)
-
     @commands.command(aliases=["broadcast", "syntonize", "roles"])
-    async def role(self, ctx: commands.Context, *args):
+    @commands.guild_only()
+    async def role(self, ctx: commands.Context, *args: str):
         assert ctx.guild is not None
         assert isinstance(ctx.author, Member)
 
         cfg = await Config.load(ctx.guild.id)
-
-        permissions = ctx.author.guild_permissions
-        has_permissions = permissions.administrator or permissions.manage_roles
-
-        ids = [r.id for r in await self.blacklist_dao.get_all()]
-        roles = filter(lambda r: (r.id not in ids) or has_permissions, ctx.guild.roles)
-        roles = filter(lambda r: not r.is_bot_managed(), roles)
-
         valid = cfg.emoji.denpabot
         err = cfg.emoji.error
 
-        match len(args):
-            case 0:
-                await list_roles(ctx, list(roles)[1:])  # skip @everyone role
-            case 1:
-                if args[0] == "list":
-                    return await list_roles(ctx, list(roles)[1:])  # skip @everyone role
+        blacklisted = {r.id for r in await self.blacklist_dao.get_all(ctx.guild.id)}
+        assignable = [r for r in ctx.guild.roles if is_self_assignable(r, blacklisted)]
 
-                err_msg = (
-                    "specify role name"
-                    if args[0] in ["add", "remove"]
-                    else "unknown subcommand. use 'add', 'remove' or 'list'"
-                )
-
-                await ctx.send(
-                    embed=ReplyEmbed.Error(description=f"{err} | {err_msg}")
-                )
-            case _:
-                role_name = " ".join(args[1:])
-                needle = list(filter(lambda x: x.name == role_name, roles))
-
-                if len(needle) == 0:
-                    return await ctx.send(
-                        embed=ReplyEmbed(
-                            description=f"{err} | specified role is unavailable or does not exist"
-                        )
+        match args:
+            case () | ("list",):
+                return await list_roles(ctx, assignable)
+            case ("add" | "remove" as action,):
+                return await ctx.send(
+                    embed=ReplyEmbed.Error(
+                        description=f"{err} | specify a role to {action}. {USAGE}"
                     )
+                )
 
-                match args[0]:
-                    case "add":
-                        await ctx.author.add_roles(needle[0])
+            # support ;;role add <thing> and ;;role <thing>
+            case ("add" | "remove" as action, *name):
+                pass
+            case name:
+                action = "add"
 
-                        await ctx.send(
-                            embed=ReplyEmbed(
-                                description=f"{valid} | {ctx.author.display_name} established connection with {needle[0].name}",
-                            )
-                        )
+        role_name = " ".join(name)
+        matches = [r for r in find_roles(ctx.guild, role_name) if r in assignable]
 
-                    case "remove":
-                        await ctx.author.remove_roles(needle[0])
+        if len(matches) != 1:
+            reason = (
+                "is unavailable or does not exist"
+                if not matches
+                else "is ambiguous, ask a mod"
+            )
+            hint = quote_hint(role_name) if not matches else ""
+            return await ctx.send(
+                embed=ReplyEmbed.Error(
+                    description=f'{err} | "{role_name}" {reason}{hint}'
+                )
+            )
 
-                        await ctx.send(
-                            embed=ReplyEmbed(
-                                description=f"{valid} | {ctx.author.display_name} is no longer in tune with {needle[0].name}",
-                            )
-                        )
-                    case _:
-                        await ctx.send(
-                            embed=ReplyEmbed(
-                                description=f"{err} | unknown subcommand. use 'add', 'remove' or 'list'",
-                            )
-                        )
+        target = matches[0]
+
+        if action == "add":
+            await ctx.author.add_roles(target, reason="self-assigned with ;;role")
+            msg = f"{valid} | {ctx.author.display_name} established connection with {target.name}"
+        else:
+            await ctx.author.remove_roles(target, reason="self-removed with ;;role")
+            msg = f"{valid} | {ctx.author.display_name} is no longer in tune with {target.name}"
+
+        await ctx.send(embed=ReplyEmbed(description=msg))
 
 
 # FIXME: a more elegant pagination solution maybe?
 async def list_roles(ctx: commands.Context, roles: list[DiscordRole]):
     names_only = [x.name for x in roles]
+
+    if not names_only:
+        # usually the bot's role sits below every role, see ;;config check
+        return await ctx.send(
+            embed=ReplyEmbed().add_field(
+                name="Roles",
+                value="no self-assignable roles. if that's unexpected, an admin can run `;;config check`",
+            )
+        )
 
     per_page = 6
     pages = math.ceil(len(roles) / per_page)
@@ -105,13 +100,10 @@ async def list_roles(ctx: commands.Context, roles: list[DiscordRole]):
         msg = ""
         _len = len(names_only_trimmed)
 
-        for j in range(0, _len, per_row): # {per_row} roles per row, seperated by ˖˚˳⌖
-            msg += " ˖˚˳⌖  ".join(names_only_trimmed[j:min(j+3, _len)]) + "\n"
+        for j in range(0, _len, per_row):  # {per_row} roles per row, seperated by ˖˚˳⌖
+            msg += " ˖˚˳⌖  ".join(names_only_trimmed[j : min(j + 3, _len)]) + "\n"
 
-        embed = ReplyEmbed(
-                ).add_field(
-            name="Roles" if i == 0 else "", value=msg
-        )
+        embed = ReplyEmbed().add_field(name="Roles" if i == 0 else "", value=msg)
 
         await ctx.send(embed=embed)
 

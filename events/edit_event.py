@@ -1,16 +1,22 @@
 import logging
+import re
 from datetime import UTC, datetime
 from math import floor
-from sqlite3 import OperationalError
 
-from discord import Member, Message, RawMessageUpdateEvent, TextChannel
+from discord import HTTPException, Member, Message, RawMessageUpdateEvent, TextChannel
 from discord.ext import commands
 
 from base.database import db
+from base.utils import message_channel
 from dao.edit_cfg_dao import EditCfgDAO
 
 
 class EditEvent(commands.Cog):
+    """
+    When a message is edited after the largest configured rule threshold has passed, it is
+    deleted (unless the message author is exempt by role) and the event is reported.
+    """
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.dao = EditCfgDAO(db)
@@ -20,68 +26,87 @@ class EditEvent(commands.Cog):
         return logging.getLogger(__name__)
 
     @commands.Cog.listener()
-    @commands.guild_only()
     async def on_raw_message_edit(self, payload: RawMessageUpdateEvent):
         assert self.bot.user is not None
-        assert payload.guild_id
 
-        data = payload.data
+        if payload.guild_id is None:
+            return  # DMs
 
-        # this is a way to distinguish 
-        # between discord server side embed updates and user message edits
-        if data["embeds"]:
+        # FIXME(kajo): The idea is that discord sends an update when it fills in a link preview,
+        # however since this isn't an edit by the author, the event won't have an edited_timestamp.
+        #
+        # We prefer this over checking for embeds since that might rule out any message that has a
+        # link in it which would be a problem!
+        if payload.data.get("edited_timestamp") is None:
             return
 
-        _config = None
-        try:
-            _config = await self.dao.get_guild_cfg(payload.guild_id)
-        except OperationalError:
+        _config = await self.dao.get_guild_cfg(payload.guild_id)
+
+        if _config is None or not _config.enabled:
+            return
+
+        if _config.report_channel_id is None:
             self.logger.error(
-                "Message edit listenr db error, "
-                "editcfg table/row might not exist in the database"
+                f"Message edit report channel for {payload.guild_id} not set."
             )
             return
 
-        if not _config:
-            self.logger.error(f"Message edit config for {payload.guild_id}not found.")
-
-        channel = self.bot.get_channel(payload.channel_id)
-
-        assert type(channel) is TextChannel
+        channel = await message_channel(self.bot, payload.channel_id)
+        if channel is None:
+            return
 
         message: Message = await channel.fetch_message(payload.message_id)
-
-        assert type(message.author) is Member
 
         if message.author.id == self.bot.user.id:
             return
 
-        if {role.id for role in message.author.roles}.intersection(
-            _config.ignore_roles
-        ):
+        edited_at = message.edited_at or datetime.now(tz=UTC)
+        rule = _config.rule_for((edited_at - message.created_at).total_seconds())
+
+        if rule is None:
             return
 
-        if (
-            datetime.now(tz=UTC) - message.created_at
-        ).total_seconds() * 3600 > _config.time_limit_h:
-            report_channel = self.bot.get_channel(_config.report_channel_id)
-            assert type(report_channel) is TextChannel
-            await report_channel.send(
-                f"{
-                    [f'<@{i}>' for i in _config.mention_list]
-                    if _config.mention_list
-                    else ''
-                }"
-                f"\n{message.author.name} edited a "
-                f"[message]({message.jump_url}) that was posted "
-                f"<t:{floor(message.created_at.timestamp())}:R>.\n"
-                f"{
-                    f'# Before:\n```{payload.cached_message.content}```\n'
-                    if payload.cached_message
-                    else '\n'
-                }# After:\n```"
-                f"{message.content}```"
-            )
+        guild = message.guild.name if message.guild else payload.guild_id
+        author = message.author
+
+        # Handle webhooks and users who have left (reported but not deleted)
+        if isinstance(author, Member):
+            keep = bool({role.id for role in author.roles} & _config.exempt_role_ids)
+        else:
+            keep = True
+
+        self.logger.warning(
+            f"[{guild}]: {author.name}'s edit was outside the {rule.threshold_s}s window, "
+            f"message will {'NOT ' if keep else ''}be deleted"
+        )
+
+        if not keep:
+            try:
+                await message.delete()
+            except HTTPException:
+                self.logger.exception(
+                    f"[{guild}]: failed to delete {author.name}'s message"
+                )
+
+        report_channel = self.bot.get_channel(_config.report_channel_id)
+        assert type(report_channel) is TextChannel
+
+        ping = " ".join(f"<@&{role_id}>" for role_id in rule.role_ids)
+        before = payload.cached_message.content if payload.cached_message else None
+
+        report = (
+            f"{ping} <@{author.id}> ({author.name}) edited [a message]({message.jump_url}) "
+            f"that was posted <t:{floor(message.created_at.timestamp())}:R>.\n"
+        )
+        if before:
+            report += f"### Before\n```\n{sanitize(before)}\n```\n"
+        report += f"### After\n```\n{sanitize(message.content)}\n```"
+
+        await report_channel.send(report.strip())
+
+
+def sanitize(text: str) -> str:
+    return re.sub(r"([\\`$])", r"\\\1", text)
 
 
 async def setup(bot: commands.Bot):

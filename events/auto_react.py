@@ -1,7 +1,9 @@
 import logging
 import re
+
 import discord
 from discord.ext.commands import Bot, Cog
+
 from base.config import Config
 
 
@@ -10,10 +12,10 @@ class AutoReact(Cog):
         self.bot = bot
         self.logger = logging.getLogger(__name__)
 
-
     @Cog.listener()
     async def on_message(self, message: discord.Message):
-        assert message.guild
+        if message.guild is None:
+            return  # DMs
 
         cfg = await Config.load(message.guild.id)
 
@@ -21,7 +23,6 @@ class AutoReact(Cog):
             compile_regex("take", cfg.emoji.take),
             compile_regex("same", cfg.emoji.same),
         ]
-        assert message.guild is not None
 
         for pat, emoji in pairs:
             if not pat.search(message.content):

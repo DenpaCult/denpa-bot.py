@@ -1,7 +1,0 @@
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS deleteguard (
-    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    guild_id INTEGER NOT NULL
-);
-"""

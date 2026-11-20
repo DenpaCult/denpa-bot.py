@@ -1,19 +1,16 @@
-import logging
+from sqlite3 import IntegrityError
 
 from attrs import asdict, has
 from discord.ext import commands
 
 from base.config import Config, GuildConfig
+from base.setup_check import find_problems
 from models.reply_embeds import ReplyEmbed
 
 
 class ConfigCommand(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-    @property
-    def logger(self):
-        return logging.getLogger(__name__)
 
     @commands.command(aliases=["cfg"])
     @commands.has_permissions(administrator=True)
@@ -24,7 +21,10 @@ class ConfigCommand(commands.Cog):
 
         match args:
             case ("check", *_):
-                await ctx.send(embed=self.check(cfg))
+                problems = await find_problems(
+                    ctx.guild, {e.id for e in self.bot.emojis}
+                )
+                await ctx.send(embed=self.check(problems))
             case ("set", *params):
                 await ctx.send(embed=await self.update_val(cfg, ctx.guild.id, params))
             case ("help", *params):
@@ -32,32 +32,21 @@ class ConfigCommand(commands.Cog):
             case _:
                 await ctx.send(embed=self.help(cfg, ()))
 
-    def check(self, cfg: GuildConfig) -> ReplyEmbed:
+    def check(self, problems: list[str]) -> ReplyEmbed:
         b = "### Config Check\n"
-        err_count = 0
-
-        if cfg.wood.channel_id is None:
-            b += "- cfg.wood.channel_id is not set. (;;wood)\n"
-            err_count += 1
-
-        if cfg.cringe.channel_id is None:
-            b += "- cfg.cringe.channel_id is not set. (;;cringe)\n"
-            err_count += 1
-
-        if cfg.delete_guard.channel_id is None:
-            b += "- cfg.delete_guard.channel_id is not set. (;;deleteguard)\n"
-            err_count += 1
-
-        if cfg.koko_role is None:
-            b += "- cfg.koko_role is not set. (;;toromi role rainbow)\n"
-            err_count += 1
+        b += "".join(f"- {problem}\n" for problem in problems)
 
         b += "### Summary\n"
-        b += f"{err_count} issues detected. ;;toromi will run "
-        b += "in a degraded state." if err_count else "as expected."
-        embed = ReplyEmbed(description=b) if err_count else ReplyEmbed.Error(description=b)
+        b += f"{len(problems)} issues detected. ;;toromi will run "
+        b += "in a degraded state." if problems else "as expected."
 
-        return embed
+        # an embed description holds at most 4096 characters
+        if len(b) > 4096:
+            b = b[:4000] + "\n…(fix some issues and try again)"
+
+        return (
+            ReplyEmbed.Error(description=b) if problems else ReplyEmbed(description=b)
+        )
 
     def help(self, cfg: GuildConfig, args) -> ReplyEmbed:
         # TODO: get the args from the db
@@ -82,9 +71,10 @@ class ConfigCommand(commands.Cog):
 
         return _embed
 
-    async def update_val(self, cfg: GuildConfig, guild_id: int, args: list[str]) -> ReplyEmbed:
+    async def update_val(
+        self, cfg: GuildConfig, guild_id: int, args: list[str]
+    ) -> ReplyEmbed:
         match args:
-
             case [field, value]:
                 db_name, key = None, field
 
@@ -93,8 +83,7 @@ class ConfigCommand(commands.Cog):
 
             case _:
                 return ReplyEmbed.Error(
-                    description=
-                    "To use ;;config set, either provide:\n"
+                    description="To use ;;config set, either provide:\n"
                     "`;;config set foo bar` for `cfg.foo = bar`, or\n"
                     "`;;config set foo bar baz` for `cfg.foo.bar = baz`"
                 )
@@ -107,9 +96,11 @@ class ConfigCommand(commands.Cog):
             return ReplyEmbed.Error(
                 description=f"{scope}{key} is not a property of GuildConfig"
             )
-
-        target = getattr(cfg, db_name) if db_name else cfg
-        setattr(target, key, value)  # keep the cached _instances entry in sync
+        except IntegrityError:
+            scope = f"{db_name}." if db_name else ""
+            return ReplyEmbed.Error(
+                description=f"{value} is not a valid value for {scope}{key}"
+            )
 
         scope = f"{db_name}." if db_name else ""
         return ReplyEmbed(description=f"set cfg.{scope}{key} to {value}")

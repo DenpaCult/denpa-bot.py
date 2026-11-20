@@ -1,14 +1,16 @@
 import logging
 
-from discord import Message, Member, TextChannel, Guild
+from discord import Guild, Member, Message, TextChannel
 from discord.ext import commands
-from base.utils import msg_embed
+
 from base.config import Config
 from base.database import db
+from base.utils import msg_embed
 from dao.deleteguard_dao import DeleteGuardDAO
 from models.delete_guard import GuardedUser
 
 # FIXME(kajo): Need to access raw event due to ability to edit old mesasges (before bot init)
+
 
 class DeleteGuardEvent(commands.Cog):
     def __init__(self, bot):
@@ -21,6 +23,9 @@ class DeleteGuardEvent(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: Message):
+        if message.guild is None:
+            return  # DMs
+
         assert isinstance(message.author, Member)
         assert isinstance(message.guild, Guild)
 
@@ -36,6 +41,9 @@ class DeleteGuardEvent(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: Message, after: Message):
+        if before.guild is None:
+            return  # DMs
+
         assert isinstance(before.author, Member)
         assert isinstance(before.guild, Guild)
 
@@ -49,7 +57,11 @@ class DeleteGuardEvent(commands.Cog):
             return
 
         if cfg.delete_guard.channel_id is None:
-            return await after.channel.send("cfg.delete_guard.channel_id not set. run `;;config delete_guard channel_id <channel_id>`")
+            self.logger.warning(
+                f"[{before.guild.name}]: {before.author}'s edit not reported, no deleteguard channel. "
+                "an admin can run `;;config set delete_guard channel_id <channel_id>`"
+            )
+            return
 
         guild_name = before.guild.name
 
