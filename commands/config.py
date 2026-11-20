@@ -1,4 +1,4 @@
-import logging
+from sqlite3 import IntegrityError
 
 from attrs import asdict, has
 from discord.ext import commands
@@ -10,10 +10,6 @@ from models.reply_embeds import ReplyEmbed
 class ConfigCommand(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-
-    @property
-    def logger(self):
-        return logging.getLogger(__name__)
 
     @commands.command(aliases=["cfg"])
     @commands.has_permissions(administrator=True)
@@ -55,7 +51,7 @@ class ConfigCommand(commands.Cog):
         b += "### Summary\n"
         b += f"{err_count} issues detected. ;;toromi will run "
         b += "in a degraded state." if err_count else "as expected."
-        embed = ReplyEmbed(description=b) if err_count else ReplyEmbed.Error(description=b)
+        embed = ReplyEmbed.Error(description=b) if err_count else ReplyEmbed(description=b)
 
         return embed
 
@@ -107,9 +103,11 @@ class ConfigCommand(commands.Cog):
             return ReplyEmbed.Error(
                 description=f"{scope}{key} is not a property of GuildConfig"
             )
-
-        target = getattr(cfg, db_name) if db_name else cfg
-        setattr(target, key, value)  # keep the cached _instances entry in sync
+        except IntegrityError:
+            scope = f"{db_name}." if db_name else ""
+            return ReplyEmbed.Error(
+                description=f"{value} is not a valid value for {scope}{key}"
+            )
 
         scope = f"{db_name}." if db_name else ""
         return ReplyEmbed(description=f"set cfg.{scope}{key} to {value}")

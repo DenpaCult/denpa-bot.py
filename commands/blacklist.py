@@ -1,6 +1,6 @@
 from discord import Role
 from discord.ext import commands
-from base.config import Config
+
 from base.database import db
 from dao.blacklist_dao import BlacklistDAO
 from models.blacklist import BlacklistRole
@@ -13,24 +13,16 @@ class Blacklist(commands.Cog):
         self.dao = BlacklistDAO(db)
 
     @commands.command(aliases=["bl"])
-    @commands.has_permissions(administrator=True, manage_roles=True)
+    @commands.has_permissions(administrator=True)
     async def blacklist(self, ctx: commands.Context, action: str, *args: str):
         assert ctx.guild
 
-        cfg = await Config.load(ctx.guild.id)
-
         action = action.strip()
-        msg = f"{cfg.emoji.error} | Command error"
 
         match action:
             case "list":
-                ids = list(map(lambda x: x.id, await self.dao.get_all()))
-                role_names = list(
-                    map(
-                        lambda x: x.name, filter(lambda r: r.id in ids, ctx.guild.roles)
-                    )
-                )
-
+                ids = [x.id for x in await self.dao.get_all(ctx.guild.id)]
+                role_names = [x.name for x in filter(lambda r: r.id in ids, ctx.guild.roles)]
                 msg = ", ".join(role_names)
 
             case "add" | "remove":

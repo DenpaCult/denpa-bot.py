@@ -1,8 +1,0 @@
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS queue (
-    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    guild_id INTEGER NOT NULL,
-    url TEXT NOT NULL,
-    requester TEXT
-);
-"""

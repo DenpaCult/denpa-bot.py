@@ -1,12 +1,11 @@
 import json
+import logging
 import re
 import requests
 from datetime import datetime, timezone
 from discord import Embed, Message
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-
-from discord.ext.commands.bot import logging
 
 URL_REGEX = r"https?://(?:www\.)?(?:[a-zA-Z0-9@:%._+~#=]{1,256}\.)(?:[a-zA-Z0-9()]{1,6})\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)"
 
