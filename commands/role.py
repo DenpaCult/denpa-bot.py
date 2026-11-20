@@ -90,7 +90,7 @@ async def list_roles(ctx: commands.Context, roles: list[DiscordRole]):
             )
         )
 
-    per_page = 6
+    per_page = 30
     pages = math.ceil(len(roles) / per_page)
 
     for i in range(pages):
