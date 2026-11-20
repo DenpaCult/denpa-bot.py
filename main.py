@@ -55,6 +55,15 @@ async def on_command_error(ctx: commands.Context, error):
 
     await ctx.send(f":warning: {error}")
     name = f"[{ctx.guild.name}]: " if isinstance(ctx.guild, Guild) else ""
+
+    # If user mistake, report as info, not error
+    if isinstance(
+        error,
+        (commands.CommandNotFound, commands.UserInputError, commands.CheckFailure),
+    ):
+        logger.info(f"{name}{ctx.author} {ctx.message.content!r}: {error}")
+        return
+
     logger.error(f"{name}command {ctx.prefix}{ctx.command} failed", exc_info=error)
 
 

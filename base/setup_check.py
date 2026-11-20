@@ -9,6 +9,7 @@ from discord import Guild, TextChannel
 
 from base.config import Config, GuildConfig
 from base.database import db
+from base.roles import is_self_assignable
 from dao.blacklist_dao import BlacklistDAO
 from dao.edit_cfg_dao import EditCfgDAO
 from models.edit_cfg import EditCfg
@@ -125,6 +126,23 @@ def check(
         problems.append(f"the koko role {koko.name} is above ;;toromi's highest role.")
 
     # ;;role
+    if not any(is_self_assignable(role, blacklisted) for role in guild.roles):
+        # would be self-assignable if they were below the bot. a new bot's role starts at the very bottom
+        blocked = [
+            role
+            for role in guild.roles
+            if not role.is_default()
+            and not role.managed
+            and role.id not in blacklisted
+            and role.permissions <= guild.default_role.permissions
+            and role >= guild.me.top_role
+        ]
+        if blocked:
+            problems.append(
+                f";;role has nothing to hand out: {len(blocked)} role(s) sit above ;;toromi's highest role. "
+                "move ;;toromi's role higher in Settings → Roles"
+            )
+
     if not blacklisted:
         problems.append(
             "the blacklist is empty, so ;;role lets anyone remove permissionless roles like punishment roles. "
