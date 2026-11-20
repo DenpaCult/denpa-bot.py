@@ -12,7 +12,7 @@ def find_roles(guild: Guild, name: str) -> list[Role]:
 def is_self_assignable(role: Role, blacklisted_ids: set[int]) -> bool:
     """
     A role is considered self-assignable if:
-        - Discord considers it assignable (e.g. not @everyone, not managed by an integration, is within the bot's authority)
+        - Discord considers it assignable (e.g. not @everyone, not managed by an integration, is within ;;toromi's authority)
         - It is not blacklisted
         - Has at most as many permissions as @everyone
     """
