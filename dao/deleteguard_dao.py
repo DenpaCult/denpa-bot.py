@@ -26,7 +26,9 @@ class DeleteGuardDAO(BaseDAO):
             "SELECT user_id, guild_id FROM deleteguard WHERE guild_id = ?;", (guild_id,)
         )
 
-        return [GuardedUser(id=user_id, guild_id=guild_id) for user_id, guild_id in rows]
+        return [
+            GuardedUser(id=user_id, guild_id=guild_id) for user_id, guild_id in rows
+        ]
 
     async def exists(self, model: GuardedUser) -> bool:
         return bool(

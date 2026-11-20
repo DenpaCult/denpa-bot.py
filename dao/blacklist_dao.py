@@ -23,4 +23,6 @@ class BlacklistDAO(BaseDAO):
             "SELECT role_id, guild_id FROM blacklist WHERE guild_id = ?;", (guild_id,)
         )
 
-        return [BlacklistRole(id=role_id, guild_id=guild_id) for role_id, guild_id in rows]
+        return [
+            BlacklistRole(id=role_id, guild_id=guild_id) for role_id, guild_id in rows
+        ]

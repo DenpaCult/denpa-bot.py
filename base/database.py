@@ -1,5 +1,5 @@
 """
-Schema History lives in migrations/. Should be NNNN_description.sql. 
+Schema History lives in migrations/. Should be NNNN_description.sql.
 
 Rules:
 - never edit a migration once it has run on prod (so once a commit hits main)
@@ -31,9 +31,13 @@ def load_migrations() -> list[Migration]:
     for file in MIGRATIONS_DIR.glob("*.sql"):
         match = re.fullmatch(r"(\d{4})_\w+", file.stem)
         if match is None:
-            raise RuntimeError(f"migration {file.name} isn't named NNNN_description.sql")
+            raise RuntimeError(
+                f"migration {file.name} isn't named NNNN_description.sql"
+            )
 
-        found.append(Migration(int(match[1]), file.stem, file.read_text(encoding="utf-8")))
+        found.append(
+            Migration(int(match[1]), file.stem, file.read_text(encoding="utf-8"))
+        )
 
     found.sort(key=lambda m: m.version)
 
@@ -87,7 +91,9 @@ class Database:
                 if self.con.in_transaction:
                     self.con.rollback()
 
-                self.logger.exception(f"migration {migration.name} failed, database left at version {self.version}")
+                self.logger.exception(
+                    f"migration {migration.name} failed, database left at version {self.version}"
+                )
                 raise
 
         self.logger.info(f"setup complete, schema version {self.version}")

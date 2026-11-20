@@ -89,19 +89,12 @@ class Track:
     requested_by: Member = attrib(repr=False)
 
     streaming_url: str | None = attrib(repr=False, default=None)
-    memoized_stream: SeekableAudioSource | None = attrib(
-                                                        init=False,
-                                                        default=None
-                                                        )
+    memoized_stream: SeekableAudioSource | None = attrib(init=False, default=None)
     already_played: bool = attrib(repr=False, default=False)
     stream_timestamp: float = attrib(init=False, repr=False, default=0.0)
 
     @classmethod
-    async def try_from_url(
-            cls,
-            url: str,
-            requested_by: Member
-            ) -> Self | list[Self]:
+    async def try_from_url(cls, url: str, requested_by: Member) -> Self | list[Self]:
         logger = logging.getLogger("yt-dlp")
 
         def _extract():
@@ -149,6 +142,7 @@ class Track:
 
     async def fetch_source(self):
         if self.streaming_url is None:
+
             def _extract():
                 with yt_dlp.YoutubeDL(_ydl_opts(flat=False)) as ydl:
                     return ydl.extract_info(self.webpage_url, download=False)
@@ -156,9 +150,7 @@ class Track:
             try:
                 result = await aio.to_thread(_extract)
             except DownloadError as e:
-                logging.getLogger("yt-dlp").error(
-                    "Error while running yt-dlp: %s", e
-                )
+                logging.getLogger("yt-dlp").error("Error while running yt-dlp: %s", e)
                 return _clean_err(e)
 
             if not result:
@@ -238,10 +230,7 @@ class MusicPlaying(commands.Cog):
         queue_lock: aio.Lock = attrib(init=False, factory=aio.Lock)
         player_task: aio.Task[None] | None = attrib(init=False, default=None)
         next_song_event: aio.Event = attrib(init=False, factory=aio.Event)
-        cur_source: SeekableAudioSource | None = attrib(
-                                                init=False,
-                                                default=None
-                                                )
+        cur_source: SeekableAudioSource | None = attrib(init=False, default=None)
 
         loop_mode: LoopMode = attrib(init=False, default=LoopMode.NoLoop)
         is_shuffle: bool = attrib(init=False, default=False)
@@ -266,9 +255,7 @@ class MusicPlaying(commands.Cog):
                     self.logger.error(f"Err on play: {err}")
 
                     aio.create_task(
-                        self.backreport_channel.send(
-                            f"Error during play: {err}"
-                            )
+                        self.backreport_channel.send(f"Error during play: {err}")
                     )
                     aio.create_task(self.stop())
                     aio.create_task(self.disconnect())
@@ -291,9 +278,9 @@ class MusicPlaying(commands.Cog):
                 # TODO: limit the exeptions to satisfy linter BLE001
                 except Exception as e:
                     await self.backreport_channel.send(
-                        f"Unable to obtain audio for {
-                            next_track.title
-                        } ({next_track.webpage_url}), error: {e}, skipping..."
+                        f"Unable to obtain audio for {next_track.title} ({
+                            next_track.webpage_url
+                        }), error: {e}, skipping..."
                     )
                     continue
                 else:
@@ -314,13 +301,9 @@ class MusicPlaying(commands.Cog):
                 self.history.append(next_track)
 
                 await self.backreport_channel.send(
-                    f"Playing {
-                        next_track.title
-                        } ({
+                    f"Playing {next_track.title} ({
                         next_track.webpage_url
-                        }), requested by {
-                        next_track.requested_by.display_name
-                        }."
+                    }), requested by {next_track.requested_by.display_name}."
                 )
 
                 prefetch_track = None
@@ -334,7 +317,7 @@ class MusicPlaying(commands.Cog):
                 self.next_song_event.clear()
                 while self.voice_client.is_playing():
                     await aio.sleep(0.05)
-                match (self.loop_mode):
+                match self.loop_mode:
                     case self.LoopMode.NoLoop:
                         ...
                     case self.LoopMode.LoopCurrent:
@@ -386,11 +369,7 @@ class MusicPlaying(commands.Cog):
         async def disconnect(self):
             aio.create_task(self.voice_client.disconnect(force=True))
 
-    guild_players: dict[int, Player] = attrib(
-                                            init=False,
-                                            factory=dict,
-                                            hash=False
-                                            )
+    guild_players: dict[int, Player] = attrib(init=False, factory=dict, hash=False)
 
     def get_player(self, guild: Guild):
         if guild.id not in self.guild_players:
@@ -440,10 +419,7 @@ class MusicPlaying(commands.Cog):
             await text_channel.send("You must be in a voice channel!")
             return
         try:
-            voice_client = await voice_channel.connect(
-                                                    timeout=5.0,
-                                                    reconnect=True
-                                                    )
+            voice_client = await voice_channel.connect(timeout=5.0, reconnect=True)
         except TimeoutError:
             # Log timeout error here
             self.logger().error("Timeout error when trying to join VC.")
@@ -452,11 +428,7 @@ class MusicPlaying(commands.Cog):
             return
 
         if ctx.guild.id not in self.guild_players:
-            new_player = self.Player(
-                    ctx.bot,
-                    ctx.guild,
-                    text_channel,
-                    voice_client)
+            new_player = self.Player(ctx.bot, ctx.guild, text_channel, voice_client)
             self.guild_players[ctx.guild.id] = new_player
 
     @commands.command()
@@ -515,9 +487,7 @@ class MusicPlaying(commands.Cog):
             await player.start()
 
             await text_channel.send(
-                f"Added {
-                    len(result)
-                } songs to the queue, requested by {
+                f"Added {len(result)} songs to the queue, requested by {
                     invoker.display_name
                 }."
             )
@@ -527,11 +497,9 @@ class MusicPlaying(commands.Cog):
             await player.start()
 
             await text_channel.send(
-                f"Added {
-                    result.title
-                    } to the queue, requested by {
-                        invoker.display_name
-                    }"
+                f"Added {result.title} to the queue, requested by {
+                    invoker.display_name
+                }"
             )
 
     @commands.command(aliases=["pn"])
@@ -689,7 +657,7 @@ class MusicPlaying(commands.Cog):
         # convert target_time to seconds
         splt = target_time.split(":")
         target_seconds = 0
-        match(len(splt)):
+        match len(splt):
             case 1:
                 try:
                     target_seconds = int(splt[0])
@@ -697,7 +665,6 @@ class MusicPlaying(commands.Cog):
                     await text_channel.send("Not a valid time")
                     return
             case 2:
-
                 try:
                     m, s = [int(x) for x in splt]
                     if s > 59 or m > 59:
@@ -710,7 +677,7 @@ class MusicPlaying(commands.Cog):
             case _:
                 await text_channel.send("Not a valid time")
                 return
-            
+
         target_second = max(target_seconds, 0)
 
         try:
@@ -737,8 +704,7 @@ class MusicPlaying(commands.Cog):
             return
 
         player.cur_source.volume = min(max(0, volume / 100), 2)
-        await text_channel.send("Volume set to"
-                                f" {player.cur_source.volume:.0%}")
+        await text_channel.send(f"Volume set to {player.cur_source.volume:.0%}")
 
     @commands.command()
     @commands.guild_only()
@@ -756,7 +722,7 @@ class MusicPlaying(commands.Cog):
         else:
             return
 
-        match (mode):
+        match mode:
             case "off":
                 player.loop_mode = MusicPlaying.Player.LoopMode.NoLoop
                 await text_channel.send("Not looping anymore.")
@@ -795,11 +761,9 @@ class MusicPlaying(commands.Cog):
         else:
             dur_string = f"{datetime.timedelta(seconds=int(maybe_dur))}"
             if maybe_dur < 3600:
-                time_string = f"{
-                                  played_time_str.removeprefix('0:')
-                                }/{
-                                  dur_string.removeprefix('0:')
-                                }"
+                time_string = f"{played_time_str.removeprefix('0:')}/{
+                    dur_string.removeprefix('0:')
+                }"
             else:
                 time_string = f"{played_time_str}/{dur_string}"
 
@@ -828,29 +792,25 @@ class MusicPlaying(commands.Cog):
 
         def make_queue_line(track: Track, track_num: int) -> str:
             if track.duration:
-                dur_string = (
-                    f"{datetime.timedelta(seconds=int(track.duration))}"
-                )
+                dur_string = f"{datetime.timedelta(seconds=int(track.duration))}"
                 if track.duration < 3600:
                     dur_string = dur_string.removeprefix("0:")
 
-                return (f"{track_num + (per_page * (page - 1))}: [{track.title}]"
-                        f"({track.webpage_url}) ~ {dur_string} ~ "
-                        f"{track.requested_by.mention}")
+                return (
+                    f"{track_num + (per_page * (page - 1))}: [{track.title}]"
+                    f"({track.webpage_url}) ~ {dur_string} ~ "
+                    f"{track.requested_by.mention}"
+                )
 
-            return (f"{track_num + per_page * page}: [{track.title}]"
-                    f"({track.webpage_url}) ~ {track.requested_by.mention}")
+            return (
+                f"{track_num + per_page * page}: [{track.title}]"
+                f"({track.webpage_url}) ~ {track.requested_by.mention}"
+            )
 
-        _embed = ReplyEmbed(
-                title="Queue"
-                ).add_field(
-                        name="",
-                        value=f"page: {
-                          page
-                        }/{
-                          max(ceil(len(player.queue) / per_page), 1)
-                        }",
-                        )
+        _embed = ReplyEmbed(title="Queue").add_field(
+            name="",
+            value=f"page: {page}/{max(ceil(len(player.queue) / per_page), 1)}",
+        )
 
         if page == 1 and player.now_playing is not None:
             queue_text_segments.append(make_queue_line(player.now_playing, 1))
@@ -864,7 +824,7 @@ class MusicPlaying(commands.Cog):
 
             start_indx = 10 * (page - 1)
             for i, track in enumerate(
-                queue_list[start_indx: start_indx + 10], start=1
+                queue_list[start_indx : start_indx + 10], start=1
             ):
                 queue_text_segments.append(make_queue_line(track, i))
 
@@ -895,9 +855,7 @@ class MusicPlaying(commands.Cog):
 
         page -= 1
 
-        historyEmbed = ReplyEmbed(
-                title="Song History"
-                )
+        historyEmbed = ReplyEmbed(title="Song History")
 
         # delta made history upside down
         _history = list(reversed(player.history))
@@ -909,21 +867,19 @@ class MusicPlaying(commands.Cog):
         _desc = ""
 
         for i, track in enumerate(
-                _history[
-                    page*HISTORY_LENGTH:page*HISTORY_LENGTH+HISTORY_LENGTH
-                    ]
-                ):
+            _history[page * HISTORY_LENGTH : page * HISTORY_LENGTH + HISTORY_LENGTH]
+        ):
             # add a field for each song between page * defined length
             # to page * defined length + 10
-            _desc += f"{
-              "current" if i == 0 else i
-            }: [{track.title}]({track.webpage_url})\n"
+            _desc += (
+                f"{'current' if i == 0 else i}: [{track.title}]({track.webpage_url})\n"
+            )
 
-        if len(_history) > page*HISTORY_LENGTH+HISTORY_LENGTH:
+        if len(_history) > page * HISTORY_LENGTH + HISTORY_LENGTH:
             # description will be number off songs after this page
-            _desc += f"and {
-                  len(_history) - page*HISTORY_LENGTH+HISTORY_LENGTH
-                } more!"
+            _desc += (
+                f"and {len(_history) - page * HISTORY_LENGTH + HISTORY_LENGTH} more!"
+            )
 
         historyEmbed.set_description(_desc)
 
@@ -942,10 +898,8 @@ class MusicPlaying(commands.Cog):
             random.shuffle(player.queue)
 
         await text_channel.send(
-                embed=ReplyEmbed(
-                    description="Shuffled songs in the queue"
-                    )
-                )
+            embed=ReplyEmbed(description="Shuffled songs in the queue")
+        )
 
     @commands.command()
     @commands.guild_only()

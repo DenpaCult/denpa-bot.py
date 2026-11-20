@@ -3,7 +3,9 @@ from models.edit_cfg import EditCfg, EditRule
 
 
 class EditCfgDAO(BaseDAO):
-    async def set_config(self, guild_id: int, enabled: bool, report_channel_id: int | None):
+    async def set_config(
+        self, guild_id: int, enabled: bool, report_channel_id: int | None
+    ):
         await self.write(
             """
             INSERT INTO edit_config (guild_id, enabled, report_channel_id) VALUES (?, ?, ?)
@@ -60,7 +62,9 @@ class EditCfgDAO(BaseDAO):
             "SELECT threshold_s, role_id FROM edit_rule WHERE guild_id = ? ORDER BY threshold_s;",
             (guild_id,),
         ):
-            rules.setdefault(threshold_s, EditRule(threshold_s)).role_ids.append(role_id)
+            rules.setdefault(threshold_s, EditRule(threshold_s)).role_ids.append(
+                role_id
+            )
 
         exempt = await self.fetch_all(
             "SELECT role_id FROM edit_exempt_role WHERE guild_id = ?;", (guild_id,)

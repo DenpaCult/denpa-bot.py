@@ -27,7 +27,9 @@ class CumDAO(BaseDAO):
             )
         )[0]
 
-    async def get_pair_count(self, guild_id: int, cummer_id: int, cummed_on_id: int) -> int:
+    async def get_pair_count(
+        self, guild_id: int, cummer_id: int, cummed_on_id: int
+    ) -> int:
         """How many times cummer_id has cummed on cummed_on_id in guild_id"""
         return (
             await self.fetch_one(

@@ -24,6 +24,7 @@ USAGE = (
 
 # TODO(kajo): migrate to command groups everywhere?
 
+
 class EditWindow(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot

@@ -14,7 +14,9 @@ class CringeDAO(BaseDAO):
 
     async def count(self, guild_id: int, user_id: int) -> int:
         """number of the user's messages that have been marked as cringe"""
-        return (await self.fetch_one(
-            "SELECT COUNT(*) FROM cringe WHERE guild_id = ? AND author_id = ?;",
-            (guild_id, user_id),
-        ))[0]
+        return (
+            await self.fetch_one(
+                "SELECT COUNT(*) FROM cringe WHERE guild_id = ? AND author_id = ?;",
+                (guild_id, user_id),
+            )
+        )[0]

@@ -1,14 +1,16 @@
 import logging
 
-from discord import Message, Member, TextChannel, Guild
+from discord import Guild, Member, Message, TextChannel
 from discord.ext import commands
-from base.utils import msg_embed
+
 from base.config import Config
 from base.database import db
+from base.utils import msg_embed
 from dao.deleteguard_dao import DeleteGuardDAO
 from models.delete_guard import GuardedUser
 
 # FIXME(kajo): Need to access raw event due to ability to edit old mesasges (before bot init)
+
 
 class DeleteGuardEvent(commands.Cog):
     def __init__(self, bot):

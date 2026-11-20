@@ -31,7 +31,7 @@ class WoodEvent(Cog):
         reaction_emoji = str(payload.emoji)
 
         if reaction_emoji != target_emoji:
-            return # not a wood event
+            return  # not a wood event
 
         if cfg.wood.channel_id is None:
             self.logger.warning(
@@ -52,7 +52,9 @@ class WoodEvent(Cog):
 
         message = await msg_ch.fetch_message(payload.message_id)
 
-        wood_count = next(filter(lambda x: str(x.emoji) == target_emoji, message.reactions)).count
+        wood_count = next(
+            filter(lambda x: str(x.emoji) == target_emoji, message.reactions)
+        ).count
 
         if wood_count >= cfg.wood.threshold:
             if not await self.dao.add(WoodMessage.from_message(message)):

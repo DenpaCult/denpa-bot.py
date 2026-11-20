@@ -21,7 +21,9 @@ class ConfigCommand(commands.Cog):
 
         match args:
             case ("check", *_):
-                problems = await find_problems(ctx.guild, {e.id for e in self.bot.emojis})
+                problems = await find_problems(
+                    ctx.guild, {e.id for e in self.bot.emojis}
+                )
                 await ctx.send(embed=self.check(problems))
             case ("set", *params):
                 await ctx.send(embed=await self.update_val(cfg, ctx.guild.id, params))
@@ -42,7 +44,9 @@ class ConfigCommand(commands.Cog):
         if len(b) > 4096:
             b = b[:4000] + "\n…(fix some issues and try again)"
 
-        return ReplyEmbed.Error(description=b) if problems else ReplyEmbed(description=b)
+        return (
+            ReplyEmbed.Error(description=b) if problems else ReplyEmbed(description=b)
+        )
 
     def help(self, cfg: GuildConfig, args) -> ReplyEmbed:
         # TODO: get the args from the db
@@ -67,9 +71,10 @@ class ConfigCommand(commands.Cog):
 
         return _embed
 
-    async def update_val(self, cfg: GuildConfig, guild_id: int, args: list[str]) -> ReplyEmbed:
+    async def update_val(
+        self, cfg: GuildConfig, guild_id: int, args: list[str]
+    ) -> ReplyEmbed:
         match args:
-
             case [field, value]:
                 db_name, key = None, field
 
@@ -78,8 +83,7 @@ class ConfigCommand(commands.Cog):
 
             case _:
                 return ReplyEmbed.Error(
-                    description=
-                    "To use ;;config set, either provide:\n"
+                    description="To use ;;config set, either provide:\n"
                     "`;;config set foo bar` for `cfg.foo = bar`, or\n"
                     "`;;config set foo bar baz` for `cfg.foo.bar = baz`"
                 )

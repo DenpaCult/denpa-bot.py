@@ -36,7 +36,9 @@ class KokoRainbow(Cog):
             try:
                 await self.tick_guild(guild)
             except Exception:
-                self.logger.exception(f"[{guild.name}]: failed to change the koko role's colour")
+                self.logger.exception(
+                    f"[{guild.name}]: failed to change the koko role's colour"
+                )
 
     @loop.before_loop
     async def wait_until_ready(self):
@@ -52,7 +54,9 @@ class KokoRainbow(Cog):
 
         role = guild.get_role(cfg.koko_role)
         if role is None:
-            self.logger.warning(f"[{guild.name}]: koko role {cfg.koko_role} doesn't exist")
+            self.logger.warning(
+                f"[{guild.name}]: koko role {cfg.koko_role} doesn't exist"
+            )
             return
 
         r, g, b = hsv_to_rgb(random.uniform(0, 360), normal_approx(), 1)

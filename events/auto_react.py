@@ -1,7 +1,9 @@
 import logging
 import re
+
 import discord
 from discord.ext.commands import Bot, Cog
+
 from base.config import Config
 
 
@@ -9,7 +11,6 @@ class AutoReact(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
         self.logger = logging.getLogger(__name__)
-
 
     @Cog.listener()
     async def on_message(self, message: discord.Message):

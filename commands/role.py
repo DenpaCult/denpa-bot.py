@@ -10,7 +10,9 @@ from base.roles import find_roles, is_self_assignable
 from dao.blacklist_dao import BlacklistDAO
 from models.reply_embeds import ReplyEmbed
 
-USAGE = "use `;;role <name>`, `;;role add <name>`, `;;role remove <name>` or `;;role list`"
+USAGE = (
+    "use `;;role <name>`, `;;role add <name>`, `;;role remove <name>` or `;;role list`"
+)
 
 
 class Role(commands.Cog):
@@ -35,7 +37,11 @@ class Role(commands.Cog):
             case () | ("list",):
                 return await list_roles(ctx, assignable)
             case ("add" | "remove" as action,):
-                return await ctx.send(embed=ReplyEmbed.Error(description=f"{err} | specify a role to {action}. {USAGE}"))
+                return await ctx.send(
+                    embed=ReplyEmbed.Error(
+                        description=f"{err} | specify a role to {action}. {USAGE}"
+                    )
+                )
 
             # support ;;role add <thing> and ;;role <thing>
             case ("add" | "remove" as action, *name):
@@ -47,8 +53,14 @@ class Role(commands.Cog):
         matches = [r for r in find_roles(ctx.guild, role_name) if r in assignable]
 
         if len(matches) != 1:
-            reason = "is unavailable or does not exist" if not matches else "is ambiguous, ask a mod"
-            return await ctx.send(embed=ReplyEmbed.Error(description=f"{err} | '{role_name}' {reason}"))
+            reason = (
+                "is unavailable or does not exist"
+                if not matches
+                else "is ambiguous, ask a mod"
+            )
+            return await ctx.send(
+                embed=ReplyEmbed.Error(description=f"{err} | '{role_name}' {reason}")
+            )
 
         target = matches[0]
 
@@ -67,7 +79,9 @@ async def list_roles(ctx: commands.Context, roles: list[DiscordRole]):
     names_only = [x.name for x in roles]
 
     if not names_only:
-        return await ctx.send(embed=ReplyEmbed().add_field(name="Roles", value="no self-assignable roles"))
+        return await ctx.send(
+            embed=ReplyEmbed().add_field(name="Roles", value="no self-assignable roles")
+        )
 
     per_page = 6
     pages = math.ceil(len(roles) / per_page)
@@ -79,13 +93,10 @@ async def list_roles(ctx: commands.Context, roles: list[DiscordRole]):
         msg = ""
         _len = len(names_only_trimmed)
 
-        for j in range(0, _len, per_row): # {per_row} roles per row, seperated by ˖˚˳⌖
-            msg += " ˖˚˳⌖  ".join(names_only_trimmed[j:min(j+3, _len)]) + "\n"
+        for j in range(0, _len, per_row):  # {per_row} roles per row, seperated by ˖˚˳⌖
+            msg += " ˖˚˳⌖  ".join(names_only_trimmed[j : min(j + 3, _len)]) + "\n"
 
-        embed = ReplyEmbed(
-                ).add_field(
-            name="Roles" if i == 0 else "", value=msg
-        )
+        embed = ReplyEmbed().add_field(name="Roles" if i == 0 else "", value=msg)
 
         await ctx.send(embed=embed)
 

@@ -14,7 +14,7 @@ from dao.edit_cfg_dao import EditCfgDAO
 class EditEvent(commands.Cog):
     """
     When a message is edited after the largest configured rule threshold has passed, it is
-    deleted (unless the message author is exempt by role) and the event is reported. 
+    deleted (unless the message author is exempt by role) and the event is reported.
     """
 
     def __init__(self, bot: commands.Bot):
@@ -46,7 +46,9 @@ class EditEvent(commands.Cog):
             return
 
         if _config.report_channel_id is None:
-            self.logger.error(f"Message edit report channel for {payload.guild_id} not set.")
+            self.logger.error(
+                f"Message edit report channel for {payload.guild_id} not set."
+            )
             return
 
         channel = await message_channel(self.bot, payload.channel_id)
@@ -82,7 +84,9 @@ class EditEvent(commands.Cog):
             try:
                 await message.delete()
             except HTTPException:
-                self.logger.exception(f"[{guild}]: failed to delete {author.name}'s message")
+                self.logger.exception(
+                    f"[{guild}]: failed to delete {author.name}'s message"
+                )
 
         report_channel = self.bot.get_channel(_config.report_channel_id)
         assert type(report_channel) is TextChannel

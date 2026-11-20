@@ -49,10 +49,18 @@ class Blacklist(commands.Cog):
                         msg = f"no role named '{name}' exists"
                     case [role] if verb == "add":
                         added = await self.dao.add(BlacklistRole.from_role(role))
-                        msg = f"blacklisted {role.name}" if added else f"{role.name} is already blacklisted"
+                        msg = (
+                            f"blacklisted {role.name}"
+                            if added
+                            else f"{role.name} is already blacklisted"
+                        )
                     case [role]:
                         removed = await self.dao.remove(BlacklistRole.from_role(role))
-                        msg = f"unblacklisted {role.name}" if removed else f"{role.name} isn't blacklisted"
+                        msg = (
+                            f"unblacklisted {role.name}"
+                            if removed
+                            else f"{role.name} isn't blacklisted"
+                        )
                     case found:
                         msg = f"{len(found)} roles are named '{name}', rename one first"
 

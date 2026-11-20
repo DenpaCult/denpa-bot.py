@@ -29,8 +29,12 @@ FILE_NAME = re.compile(r"(?P<kind>[a-z]+)_(?P<guild_id>\d+)\.json")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("backups", type=Path, help="folder holding the JS bot's JSON files")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "backups", type=Path, help="folder holding the JS bot's JSON files"
+    )
     parser.add_argument(
         "--db",
         type=Path,
@@ -96,7 +100,9 @@ class Migration:
         await self.set(guild_id, "cringe", "threshold", int(data["threshold"]))
         await self.set(guild_id, "cringe", "channel_id", snowflake(data["channelId"]))
         # the JS bot stored minutes (and assumed 20 when missing), the python bot uses seconds
-        await self.set(guild_id, "cringe", "expire_time", int(data.get("expireTime", 20)) * 60)
+        await self.set(
+            guild_id, "cringe", "expire_time", int(data.get("expireTime", 20)) * 60
+        )
         if "timeoutTime" in data:
             await self.set(guild_id, "cringe", "timeout_time", int(data["timeoutTime"]))
 
@@ -109,7 +115,9 @@ class Migration:
         return f"{sum(added)} messages" + duplicates(added)
 
     async def migrate_deleteguard(self, guild_id: int, data: dict) -> str:
-        await self.set(guild_id, "delete_guard", "channel_id", snowflake(data["channelId"]))
+        await self.set(
+            guild_id, "delete_guard", "channel_id", snowflake(data["channelId"])
+        )
 
         added = [
             await self.deleteguard.add(GuardedUser(int(user_id), guild_id))
@@ -133,7 +141,9 @@ class Migration:
         return f"{count} events"
 
     async def migrate_editwindow(self, guild_id: int, data: dict) -> str:
-        await self.edit.set_config(guild_id, bool(data.get("enabled")), snowflake(data.get("channelId")))
+        await self.edit.set_config(
+            guild_id, bool(data.get("enabled")), snowflake(data.get("channelId"))
+        )
 
         for rule in data.get("rules", []):
             for role_id in rule["roles"]:
@@ -159,14 +169,18 @@ class Migration:
         for path in sorted(backups.glob("*.json")):
             match = FILE_NAME.fullmatch(path.name)
             if match is None or match["kind"] not in self.handlers:
-                print(f"  {path.name}: SKIPPED, not migrated (see the notes at the top of scripts/migrate_json.py)")
+                print(
+                    f"  {path.name}: SKIPPED, not migrated (see the notes at the top of scripts/migrate_json.py)"
+                )
                 continue
 
             by_guild[int(match["guild_id"])].append((match["kind"], path))
 
         for guild_id, files in by_guild.items():
             print(f"guild {guild_id}")
-            await self.config.load(guild_id)  # creates the settings rows with their defaults
+            await self.config.load(
+                guild_id
+            )  # creates the settings rows with their defaults
 
             for kind, path in files:
                 data = json.loads(path.read_text(encoding="utf-8"))
@@ -195,7 +209,9 @@ def main():
 
     target: Path = args.db
     if target.exists():
-        sys.exit(f"{target} already exists. move or delete it first, this script only builds new databases")
+        sys.exit(
+            f"{target} already exists. move or delete it first, this script only builds new databases"
+        )
 
     building = target.with_name(target.name + ".migrating")
     building.unlink(missing_ok=True)  # left over from a crashed run
@@ -203,7 +219,9 @@ def main():
 
     from base.database import db
 
-    db.con.execute("PRAGMA synchronous = OFF;")  # safe, the file is thrown away if anything fails
+    db.con.execute(
+        "PRAGMA synchronous = OFF;"
+    )  # safe, the file is thrown away if anything fails
 
     try:
         asyncio.run(Migration().run(args.backups))
