@@ -949,6 +949,7 @@ class MusicPlaying(commands.Cog):
 
     @commands.command()
     @commands.guild_only()
+    @commands.has_guild_permissions(administrator=True)
     async def debug(self, ctx: commands.Context):
         assert ctx.guild is not None
 
@@ -965,6 +966,7 @@ class MusicPlaying(commands.Cog):
 
     @commands.command()
     @commands.guild_only()
+    @commands.has_guild_permissions(administrator=True)
     async def debug2(self, ctx: commands.Context):
         assert ctx.guild is not None
 
