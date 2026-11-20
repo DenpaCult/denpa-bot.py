@@ -2,6 +2,17 @@ from discord import Guild, Member, Role
 from discord.ext import commands
 
 
+def quote_hint(text: str) -> str:
+    """
+    Template text for users for when they try using single quotes to name a role or something.
+    Discord.js seems to not like single quotes which is unfortnate
+    """
+    if text.startswith("'") or text.endswith("'"):
+        return ' (names with spaces need double quotes, like "event organizer")'
+
+    return ""
+
+
 def find_roles(guild: Guild, name: str) -> list[Role]:
     """roles whose name matches, ignoring case"""
     needle = name.strip().casefold()
@@ -49,8 +60,10 @@ class RoleArg(commands.Converter[Role]):
             case [role]:
                 return role
             case []:
-                raise commands.RoleNotFound(argument)
+                raise commands.BadArgument(
+                    f'role "{argument}" not found{quote_hint(argument)}'
+                )
             case found:
                 raise commands.BadArgument(
-                    f"{len(found)} roles are named '{argument}', use a mention or ID instead"
+                    f'{len(found)} roles are named "{argument}", use a mention or ID instead'
                 )

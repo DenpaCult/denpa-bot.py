@@ -6,7 +6,7 @@ from discord.ext import commands
 
 from base.config import Config
 from base.database import db
-from base.roles import find_roles, is_self_assignable
+from base.roles import find_roles, is_self_assignable, quote_hint
 from dao.blacklist_dao import BlacklistDAO
 from models.reply_embeds import ReplyEmbed
 
@@ -58,8 +58,11 @@ class Role(commands.Cog):
                 if not matches
                 else "is ambiguous, ask a mod"
             )
+            hint = quote_hint(role_name) if not matches else ""
             return await ctx.send(
-                embed=ReplyEmbed.Error(description=f"{err} | '{role_name}' {reason}")
+                embed=ReplyEmbed.Error(
+                    description=f'{err} | "{role_name}" {reason}{hint}'
+                )
             )
 
         target = matches[0]
@@ -79,8 +82,12 @@ async def list_roles(ctx: commands.Context, roles: list[DiscordRole]):
     names_only = [x.name for x in roles]
 
     if not names_only:
+        # usually the bot's role sits below every role, see ;;config check
         return await ctx.send(
-            embed=ReplyEmbed().add_field(name="Roles", value="no self-assignable roles")
+            embed=ReplyEmbed().add_field(
+                name="Roles",
+                value="no self-assignable roles. if that's unexpected, an admin can run `;;config check`",
+            )
         )
 
     per_page = 6

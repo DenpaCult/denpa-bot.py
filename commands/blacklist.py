@@ -2,7 +2,7 @@ from discord import Member
 from discord.ext import commands
 
 from base.database import db
-from base.roles import can_manage_roles, find_roles, is_admin
+from base.roles import can_manage_roles, find_roles, is_admin, quote_hint
 from dao.blacklist_dao import BlacklistDAO
 from models.blacklist import BlacklistRole
 from models.reply_embeds import ReplyEmbed
@@ -46,7 +46,7 @@ class Blacklist(commands.Cog):
 
                 match find_roles(ctx.guild, name):
                     case []:
-                        msg = f"no role named '{name}' exists"
+                        msg = f'no role named "{name}" exists{quote_hint(name)}'
                     case [role] if verb == "add":
                         added = await self.dao.add(BlacklistRole.from_role(role))
                         msg = (
@@ -62,13 +62,13 @@ class Blacklist(commands.Cog):
                             else f"{role.name} isn't blacklisted"
                         )
                     case found:
-                        msg = f"{len(found)} roles are named '{name}', rename one first"
+                        msg = f'{len(found)} roles are named "{name}", rename one first'
 
             case "help":
                 msg = USAGE
 
             case _:
-                msg = f"unknown option '{action}'.\n{USAGE}"
+                msg = f'unknown option "{action}".\n{USAGE}'
 
         await ctx.send(embed=ReplyEmbed().add_field(name="Blacklist", value=msg))
 

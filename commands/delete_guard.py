@@ -91,7 +91,7 @@ class DeleteGuard(commands.Cog):
 
             case _:
                 await ctx.send(
-                    embed=_embed.set_description(f"unknown option '{action}'.\n{USAGE}")
+                    embed=_embed.set_description(f'unknown option "{action}".\n{USAGE}')
                 )
 
     async def describe(self, guild: Guild, user_id: int) -> str:

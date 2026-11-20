@@ -47,7 +47,7 @@ class EditWindow(commands.Cog):
 
         if rest:
             return await reply(
-                ctx, f"unknown option '{rest.split()[0]}'.\n{USAGE}", error=True
+                ctx, f'unknown option "{rest.split()[0]}".\n{USAGE}', error=True
             )
 
         cfg = await self.current(ctx.guild.id)
