@@ -1,10 +1,17 @@
-from discord import Role
+from discord import Member
 from discord.ext import commands
 
 from base.database import db
+from base.roles import can_manage_roles, find_roles, is_admin
 from dao.blacklist_dao import BlacklistDAO
 from models.blacklist import BlacklistRole
 from models.reply_embeds import ReplyEmbed
+
+USAGE = (
+    "`;;blacklist list`: show blacklisted roles\n"
+    "`;;blacklist add <role>`: stop members giving themselves a role (Admin or Manage Roles)\n"
+    "`;;blacklist remove <role>`: let members give themselves a role again (Admin)"
+)
 
 
 class Blacklist(commands.Cog):
@@ -13,47 +20,49 @@ class Blacklist(commands.Cog):
         self.dao = BlacklistDAO(db)
 
     @commands.command(aliases=["bl"])
-    @commands.has_permissions(administrator=True)
-    async def blacklist(self, ctx: commands.Context, action: str, *args: str):
-        assert ctx.guild
+    @commands.guild_only()
+    async def blacklist(self, ctx: commands.Context, action: str = "list", *args: str):
+        assert ctx.guild is not None
+        assert isinstance(ctx.author, Member)
 
-        action = action.strip()
-
-        match action:
+        # NB: "Manage Roles" can add to blacklist, however only admins can remove from blacklist
+        match action.strip().lower():
             case "list":
-                ids = [x.id for x in await self.dao.get_all(ctx.guild.id)]
-                role_names = [x.name for x in filter(lambda r: r.id in ids, ctx.guild.roles)]
-                msg = ", ".join(role_names)
+                ids = {x.id for x in await self.dao.get_all(ctx.guild.id)}
+                names = [r.name for r in ctx.guild.roles if r.id in ids]
+                msg = ", ".join(names) or "no roles are blacklisted"
 
-            case "add" | "remove":
-                role = " ".join(args)
-                roles = list(filter(lambda x: x.name == role, ctx.guild.roles))
+            case "add" if not can_manage_roles(ctx.author):
+                msg = "adding to the blacklist needs Admin or Manage Roles"
 
-                match len(roles):
-                    case 0:
-                        msg = f"no role with name '{role}' exists'"
-                    case 1:
-                        target: Role = roles[0]
-                        if action == "add":
-                            await self.dao.add(BlacklistRole.from_role(target))
-                            msg = f"added {role} to the blacklist"
-                        else:
-                            await self.dao.remove(BlacklistRole.from_role(target))
-                            msg = f"removed {role} from the blacklist"
-                    case _:
-                        msg = f"expected 0 or 1 roles, found {len(roles)}"
+            case "remove" if not is_admin(ctx.author):
+                msg = "removing from the blacklist needs Admin"
+
+            case "add" | "remove" as verb if not args:
+                msg = f"specify a role to {verb}"
+
+            case "add" | "remove" as verb:
+                name = " ".join(args)
+
+                match find_roles(ctx.guild, name):
+                    case []:
+                        msg = f"no role named '{name}' exists"
+                    case [role] if verb == "add":
+                        added = await self.dao.add(BlacklistRole.from_role(role))
+                        msg = f"blacklisted {role.name}" if added else f"{role.name} is already blacklisted"
+                    case [role]:
+                        removed = await self.dao.remove(BlacklistRole.from_role(role))
+                        msg = f"unblacklisted {role.name}" if removed else f"{role.name} isn't blacklisted"
+                    case found:
+                        msg = f"{len(found)} roles are named '{name}', rename one first"
 
             case "help":
-                msg = """
-                list: Show blacklisted roles
-                add: blacklist a role
-                remove: remove a blacklisted role
-                """
-            case _:
-                msg = "invalid option TODO(kajo): write better message"
+                msg = USAGE
 
-        embed = ReplyEmbed().add_field(name="Blacklist", value=msg)
-        await ctx.send(embed=embed)
+            case _:
+                msg = f"unknown option '{action}'.\n{USAGE}"
+
+        await ctx.send(embed=ReplyEmbed().add_field(name="Blacklist", value=msg))
 
 
 async def setup(bot):
