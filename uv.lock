@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.13"
 
 [[package]]
@@ -411,6 +411,7 @@ name = "denpa-bot-py"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "attrs" },
     { name = "beautifulsoup4" },
     { name = "davey" },
     { name = "discord-py" },
@@ -422,6 +423,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "attrs", specifier = ">=26.1.0" },
     { name = "beautifulsoup4", specifier = ">=4.14.3" },
     { name = "davey", specifier = ">=0.1.6" },
     { name = "discord-py", specifier = ">=2.6.4" },
