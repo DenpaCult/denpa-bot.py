@@ -27,6 +27,15 @@ class CumDAO(BaseDAO):
             )
         )[0]
 
+    async def get_pair_count(self, guild_id: int, cummer_id: int, cummed_on_id: int) -> int:
+        """How many times cummer_id has cummed on cummed_on_id in guild_id"""
+        return (
+            await self.fetch_one(
+                "SELECT COUNT(*) FROM cum WHERE guild_id = ? AND cummer_id = ? AND cummed_on_id = ?;",
+                (guild_id, cummer_id, cummed_on_id),
+            )
+        )[0]
+
     async def get_most_cummed_on_user(self, guild_id: int, user_id: int) -> int | None:
         """might return the id of the user that user_id has cummed on the most in guild_id"""
         row = await self.fetch_one(

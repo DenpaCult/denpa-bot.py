@@ -13,7 +13,7 @@ from discord.ext.commands import Bot, Cog
 
 from base.config import Config
 from base.database import db
-from base.utils import msg_embed
+from base.utils import message_channel, msg_embed
 from dao.cringe_dao import CringeDAO
 from models.cringe import CringeMessage
 
@@ -29,10 +29,12 @@ class CringeEvent(Cog):
     def logger(self):
         return logging.getLogger(__name__)
 
-    # on_reaction_add doesnt get invoked when reacting to older messages before the bot was started
+    # NB: on_reaction_add doesnt get invoked when reacting to older messages before the bot was started
     @Cog.listener()
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent):
-        assert payload.guild_id
+        if payload.guild_id is None:
+            return  # DMs
+
         cfg = await Config.load(payload.guild_id)
 
         target_emoji: str = cfg.emoji.cringe
@@ -41,33 +43,45 @@ class CringeEvent(Cog):
         if reacted_emoji != target_emoji:
             return
 
-        msg_ch = await self.bot.fetch_channel(payload.channel_id)
-        assert isinstance(msg_ch, TextChannel)
-
         if cfg.cringe.channel_id is None:
-            return await msg_ch.send("cfg.cringe.channel_id is not set. run `;;config cringe channel_id <channel_id>`")
+            self.logger.warning(
+                f"[{payload.guild_id}]: cringe reaction ignored, no cringe channel. "
+                "an admin can run `;;config set cringe channel_id <channel_id>`"
+            )
+            return
+
+        if payload.channel_id == cfg.cringe.channel_id:
+            return  # reposts in the cringe channel don't count
+
+        msg_ch = await message_channel(self.bot, payload.channel_id)
+        if msg_ch is None:
+            return
 
         log_ch = await self.bot.fetch_channel(cfg.cringe.channel_id)
         assert isinstance(log_ch, TextChannel)
 
         message = await msg_ch.fetch_message(payload.message_id)
-        assert isinstance(message.author, Member)
+        guild = f"[{message.guild.name}]" if message.guild else "[NOT GUILD]"
+
+        if not isinstance(message.author, Member):
+            # webhooks and users who already left can't be timed out
+            self.logger.info(
+                f"{guild}: cringe reaction on {message.author.name}'s message ignored, not a member"
+            )
+            return
 
         assert payload.member is not None
-
-        guild = f"[{message.guild.name}]" if message.guild else "[NOT GUILD]"
 
         if message.author.id == payload.member.id:
             await message.remove_reaction(reacted_emoji, message.author)
             self.logger.info(f"{guild}: {message.author.name} tried muting themselves")
             return
 
-        elapsed = datetime.now(tz=UTC) - message.created_at
-        expireTime = cfg.cringe.expire_time
+        elapsed_s = (datetime.now(tz=UTC) - message.created_at).total_seconds()
 
-        if elapsed.seconds >= expireTime:  # created_at returns time in utc
+        if elapsed_s >= cfg.cringe.expire_time:
             self.logger.info(
-                f"{guild}: reaction to {message.author.name}'s message outside window: {elapsed.seconds}s elapsed'"
+                f"{guild}: reaction to {message.author.name}'s message outside window: {elapsed_s:.0f}s elapsed"
             )
             return
 
@@ -75,7 +89,9 @@ class CringeEvent(Cog):
             f"{guild}: {payload.member.name} thinks {message.author.name} is cringe"
         )
 
-        cringe_count = next(filter(lambda x: str(x.emoji) == target_emoji, message.reactions)).count
+        cringe_count = next(
+            filter(lambda x: str(x.emoji) == target_emoji, message.reactions)
+        ).count
 
         if cringe_count >= cfg.cringe.threshold:
             # counted before add() so the current message isn't included
@@ -85,21 +101,24 @@ class CringeEvent(Cog):
                 return
 
             base = timedelta(seconds=cfg.cringe.timeout_time)
-            multiplier = max((offences + 1) - 5, 0) # current past 5
+            multiplier = max((offences + 1) - 5, 0)  # current past 5
             total = base + timedelta(seconds=2 * multiplier)
 
             try:
                 await message.author.timeout(total)
             except (Forbidden, HTTPException, TypeError, ValueError):
-                self.logger.error(traceback.format_exc())
-
-            self.logger.info(
-                f"{guild}: offence #{offences + 1}. timed out {message.author} for {total.seconds}s"
-            )
-            await message.reply(
-                f"{message.author.name.upper()} WAS MUTED FOR THIS POST",
-                mention_author=True,
-            )
+                # e.g. admins, or anyone above the bot's top role.
+                self.logger.error(
+                    f"{guild}: failed to time out {message.author}\n{traceback.format_exc()}"
+                )
+            else:
+                self.logger.info(
+                    f"{guild}: offence #{offences + 1}. timed out {message.author} for {total.total_seconds():.0f}s"
+                )
+                await message.reply(
+                    f"{message.author.name.upper()} WAS MUTED FOR THIS POST",
+                    mention_author=True,
+                )
 
             await log_ch.send(
                 embeds=msg_embed(message, f"{message.author.name} posted cringe")

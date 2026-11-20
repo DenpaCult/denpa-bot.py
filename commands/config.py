@@ -4,6 +4,7 @@ from attrs import asdict, has
 from discord.ext import commands
 
 from base.config import Config, GuildConfig
+from base.setup_check import find_problems
 from models.reply_embeds import ReplyEmbed
 
 
@@ -20,7 +21,8 @@ class ConfigCommand(commands.Cog):
 
         match args:
             case ("check", *_):
-                await ctx.send(embed=self.check(cfg))
+                problems = await find_problems(ctx.guild, {e.id for e in self.bot.emojis})
+                await ctx.send(embed=self.check(problems))
             case ("set", *params):
                 await ctx.send(embed=await self.update_val(cfg, ctx.guild.id, params))
             case ("help", *params):
@@ -28,32 +30,19 @@ class ConfigCommand(commands.Cog):
             case _:
                 await ctx.send(embed=self.help(cfg, ()))
 
-    def check(self, cfg: GuildConfig) -> ReplyEmbed:
+    def check(self, problems: list[str]) -> ReplyEmbed:
         b = "### Config Check\n"
-        err_count = 0
-
-        if cfg.wood.channel_id is None:
-            b += "- cfg.wood.channel_id is not set. (;;wood)\n"
-            err_count += 1
-
-        if cfg.cringe.channel_id is None:
-            b += "- cfg.cringe.channel_id is not set. (;;cringe)\n"
-            err_count += 1
-
-        if cfg.delete_guard.channel_id is None:
-            b += "- cfg.delete_guard.channel_id is not set. (;;deleteguard)\n"
-            err_count += 1
-
-        if cfg.koko_role is None:
-            b += "- cfg.koko_role is not set. (;;toromi role rainbow)\n"
-            err_count += 1
+        b += "".join(f"- {problem}\n" for problem in problems)
 
         b += "### Summary\n"
-        b += f"{err_count} issues detected. ;;toromi will run "
-        b += "in a degraded state." if err_count else "as expected."
-        embed = ReplyEmbed.Error(description=b) if err_count else ReplyEmbed(description=b)
+        b += f"{len(problems)} issues detected. ;;toromi will run "
+        b += "in a degraded state." if problems else "as expected."
 
-        return embed
+        # an embed description holds at most 4096 characters
+        if len(b) > 4096:
+            b = b[:4000] + "\n…(fix some issues and try again)"
+
+        return ReplyEmbed.Error(description=b) if problems else ReplyEmbed(description=b)
 
     def help(self, cfg: GuildConfig, args) -> ReplyEmbed:
         # TODO: get the args from the db
