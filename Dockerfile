@@ -1,8 +1,10 @@
 FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ffmpeg nodejs \
+ && apt-get install -y --no-install-recommends ffmpeg \
  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
 
 WORKDIR /app
 
