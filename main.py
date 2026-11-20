@@ -1,11 +1,12 @@
-import os
 import logging
-import discord
+import os
 
-from discord.ext import commands
+import discord
 from discord import Guild
-from base.database import db
+from discord.ext import commands
 from dotenv import load_dotenv
+
+from base.database import db
 
 discord.utils.setup_logging()
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ bot = commands.Bot(
     command_prefix=os.environ["TOROMI_PREFIX"], intents=intents, max_messages=1000
 )
 
+
 async def load_extentions(folder: str):
     """
     load every module in {folder} as an extension. each module defines a commands.Cog
@@ -40,8 +42,17 @@ async def load_extentions(folder: str):
                 logger.warning(f"Failed to load {extension}: {e}")
 
 
+@bot.check
+async def ignore_dms(ctx: commands.Context) -> bool:
+    """Fires CheckFailure when command comes from outside a guild"""
+    return ctx.guild is not None
+
+
 @bot.event
 async def on_command_error(ctx: commands.Context, error):
+    if ctx.guild is None:
+        return  # ignore commands from DMs
+
     await ctx.send(f":warning: {error}")
     name = f"[{ctx.guild.name}]: " if isinstance(ctx.guild, Guild) else ""
     logger.error(f"{name}command {ctx.prefix}{ctx.command} failed", exc_info=error)
@@ -49,12 +60,12 @@ async def on_command_error(ctx: commands.Context, error):
 
 @bot.event
 async def on_error(event_method: str, *args, **kwargs):
-    name = f"[{args[0].name}]: " if isinstance(args[0], Guild) else ""
+    name = f"[{args[0].name}]: " if args and isinstance(args[0], Guild) else ""
     logger.exception(f"{name}event {event_method} failed")
 
 
 async def main():
-    db.setup() # TODO(kajo): remove this out of async
+    db.setup()  # TODO(kajo): remove this out of async
 
     async with bot:
         await load_extentions("events")

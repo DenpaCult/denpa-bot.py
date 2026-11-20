@@ -21,6 +21,9 @@ class DeleteGuardEvent(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: Message):
+        if message.guild is None:
+            return  # DMs
+
         assert isinstance(message.author, Member)
         assert isinstance(message.guild, Guild)
 
@@ -36,6 +39,9 @@ class DeleteGuardEvent(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message_edit(self, before: Message, after: Message):
+        if before.guild is None:
+            return  # DMs
+
         assert isinstance(before.author, Member)
         assert isinstance(before.guild, Guild)
 
@@ -49,7 +55,11 @@ class DeleteGuardEvent(commands.Cog):
             return
 
         if cfg.delete_guard.channel_id is None:
-            return await after.channel.send("cfg.delete_guard.channel_id not set. run `;;config delete_guard channel_id <channel_id>`")
+            self.logger.warning(
+                f"[{before.guild.name}]: {before.author}'s edit not reported, no deleteguard channel. "
+                "an admin can run `;;config set delete_guard channel_id <channel_id>`"
+            )
+            return
 
         guild_name = before.guild.name
 

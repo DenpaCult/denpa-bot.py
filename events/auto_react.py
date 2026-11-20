@@ -13,7 +13,8 @@ class AutoReact(Cog):
 
     @Cog.listener()
     async def on_message(self, message: discord.Message):
-        assert message.guild
+        if message.guild is None:
+            return  # DMs
 
         cfg = await Config.load(message.guild.id)
 
