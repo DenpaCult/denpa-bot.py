@@ -60,6 +60,15 @@ def _ydl_opts(*, flat: bool) -> dict:
     return opts
 
 
+FFMPEG_ARGS = """
+              -reconnect 1
+              -reconnect_streamed 1
+              -reconnect_on_network_error 1
+              -reconnect_on_http_error 1
+              -reconnect_max_retries 7
+              """
+
+
 @attrs(auto_attribs=True)
 class SeekableAudioSource(AudioSource):
     real_source: FFmpegPCMAudio = attrib(repr=False)
@@ -159,7 +168,8 @@ class Track:
             self.streaming_url = result["url"]
 
         assert self.streaming_url is not None
-        real_source = FFmpegPCMAudio(self.streaming_url)
+        real_source = FFmpegPCMAudio(self.streaming_url,
+                                     options=FFMPEG_ARGS)
         source = SeekableAudioSource(real_source)
 
         self.memoized_stream = source
@@ -194,7 +204,9 @@ class Track:
 
         before_options = f"-ss {seek_time}" if seek_time > 0 else None
         source = SeekableAudioSource(
-            FFmpegPCMAudio(self.streaming_url, before_options=before_options)
+            FFmpegPCMAudio(self.streaming_url,
+                           before_options=before_options,
+                           options=FFMPEG_ARGS)
         )
         source.play_location = max(seek_time, 0.0)
 
