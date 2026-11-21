@@ -60,13 +60,19 @@ def _ydl_opts(*, flat: bool) -> dict:
     return opts
 
 
-FFMPEG_ARGS = """
-              -reconnect 1
-              -reconnect_streamed 1
-              -reconnect_on_network_error 1
-              -reconnect_on_http_error 1
-              -reconnect_max_retries 7
-              """
+# BEFORE_OPTIONS since these are related to the input (network)
+# NB: -reconnect_max_retries requires ffmpeg >= 7.0
+#
+# -timeout is in us (5000000us = 5s). required or else reads never time out
+# we specify 5xx errors cause 4xx is likely to be expired url or rejected cookie
+#
+# as currently configured, the longest ffmpeg will wait in the worst case is 25s
+FFMPEG_BEFORE_OPTIONS = (
+    "-timeout 5000000"
+    " -reconnect 1 -reconnect_streamed 1"
+    " -reconnect_on_network_error 1 -reconnect_on_http_error 5xx"
+    " -reconnect_max_retries 3"
+)
 
 
 @attrs(auto_attribs=True)
@@ -168,8 +174,10 @@ class Track:
             self.streaming_url = result["url"]
 
         assert self.streaming_url is not None
-        real_source = FFmpegPCMAudio(self.streaming_url,
-                                     options=FFMPEG_ARGS)
+        real_source = FFmpegPCMAudio(
+            self.streaming_url,
+            before_options=FFMPEG_BEFORE_OPTIONS,
+        )
         source = SeekableAudioSource(real_source)
 
         self.memoized_stream = source
@@ -202,11 +210,12 @@ class Track:
     async def make_source(self, seek_time: float = 0.0) -> SeekableAudioSource:
         assert self.streaming_url is not None
 
-        before_options = f"-ss {seek_time}" if seek_time > 0 else None
         source = SeekableAudioSource(
-            FFmpegPCMAudio(self.streaming_url,
-                           before_options=before_options,
-                           options=FFMPEG_ARGS)
+            FFmpegPCMAudio(
+                self.streaming_url,
+                before_options=FFMPEG_BEFORE_OPTIONS
+                + (f" -ss {seek_time}" if seek_time > 0 else ""),
+            )
         )
         source.play_location = max(seek_time, 0.0)
 
