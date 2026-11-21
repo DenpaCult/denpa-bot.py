@@ -12,5 +12,5 @@ dependencies = [
     "pynacl>=1.6.1",
     "python-dotenv>=1.2.1",
     "requests>=2.32.5",
-    "yt-dlp[default]>=2026.11.20.232656.dev0",
+    "yt-dlp[curl-cffi,default]>=2026.11.20.232656.dev0",
 ]
