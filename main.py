@@ -27,7 +27,7 @@ bot = commands.Bot(
 )
 
 
-async def load_extentions(folder: str):
+async def load_extensions(folder: str):
     """
     load every module in {folder} as an extension. each module defines a commands.Cog
     and an `async def setup(bot)` that adds it, see commands/test_command.py
@@ -77,8 +77,8 @@ async def main():
     db.setup()  # TODO(kajo): remove this out of async
 
     async with bot:
-        await load_extentions("events")
-        await load_extentions("commands")
+        await load_extensions("events")
+        await load_extensions("commands")
         await bot.start(os.environ["TOROMI_TOKEN"])
 
 
