@@ -9,6 +9,13 @@ add a new `migrations/NNNN_description.sql` (next number up). never edit one tha
 
 Point `scripts/migrate_json.py` at the JS bot's `backups` folder. 
 
+# update yt-dlp
+
+1. run `uv lock --upgrade-package yt-dlp`
+2. commit `uv.lock`
+
+TODO: dependabot?
+
 ```sh
 uv run python -m scripts.migrate_json path/to/denpa-bot/backups --db persist/toromi.db 
 ```
