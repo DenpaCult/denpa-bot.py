@@ -22,7 +22,7 @@ class Heartbeat(Cog):
 
     @tasks.loop(seconds=30)
     async def heartbeat(self):
-        if os.name == "nt":
+        if os.name == "nt" or not self.bot.is_ready():
             return
 
         with open("/tmp/health", "w") as f:
