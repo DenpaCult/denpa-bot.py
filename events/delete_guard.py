@@ -26,7 +26,9 @@ class DeleteGuardEvent(commands.Cog):
         if message.guild is None:
             return  # DMs
 
-        assert isinstance(message.author, Member)
+        if not isinstance(message.author, Member):
+            return  # Author was a plain User
+
         assert isinstance(message.guild, Guild)
 
         if not await self.dao.exists(GuardedUser.from_member(message.author)):
@@ -44,14 +46,16 @@ class DeleteGuardEvent(commands.Cog):
         if before.guild is None:
             return  # DMs
 
-        assert isinstance(before.author, Member)
+        if not isinstance(before.author, Member):
+            return  # Author was a plain User
+
         assert isinstance(before.guild, Guild)
 
-        cfg = await Config.load(before.guild.id)
-
-        # for some reason discord fires this event even if content is unchanged
+        # Discord will fire this event when it adds a link preview, even if the content is unchanged. 
         if before.content == after.content:
             return
+
+        cfg = await Config.load(before.guild.id)
 
         if not await self.dao.exists(GuardedUser.from_member(before.author)):
             return
