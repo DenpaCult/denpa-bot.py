@@ -13,6 +13,7 @@ URL_REGEX = r"https?://(?:www\.)?(?:[a-zA-Z0-9@:%._+~#=]{1,256}\.)(?:[a-zA-Z0-9(
 
 COLOUR_SAPWOOD = 0xE8B693
 DUMMY_URL = "https://example.com"
+REQUEST_TIMEOUT = 10  # seconds; these calls block the event loop
 
 url_regex = re.compile(URL_REGEX)
 
@@ -98,6 +99,14 @@ def msg_embed(
 
 
 def handle_link(url: str) -> list[str]:
+    try:
+        return _resolve_link(url)
+    except requests.RequestException as e:
+        logging.getLogger("utils.cringe.handle_link").error(f"{e!r} for {url}")
+        return [url]
+
+
+def _resolve_link(url: str) -> list[str]:
     logger = logging.getLogger("utils.cringe.handle_link")
     result = urlparse(url)
 
@@ -116,26 +125,37 @@ def handle_link(url: str) -> list[str]:
             | "twittpr.com"
             | "stupidpenisx.com"
             | "hitlerx.com"
-            | "xcancel.com"
         ):
             api = result._replace(netloc="api.fxtwitter.com")
 
-            r = requests.get(api.geturl())
+            r = requests.get(api.geturl(), timeout=REQUEST_TIMEOUT)
             if r.status_code != 200:
                 logger.error(f"{r.status_code} from {api.geturl()}")
                 return [url]
 
             obj = json.loads(r.text)
-            urls: list[str] = [x["url"] for x in obj["tweet"]["media"]["photos"]]
 
-            return urls
+            # media will be {} on text-only tweets
+            media = obj.get("tweet", {}).get("media", {})
+
+            # collect all images
+            urls: list[str] = [x["url"] for x in media.get("photos", [])]
+
+            # collect all video thumbnails
+            urls += [
+                x["thumbnail_url"]
+                for x in media.get("videos", [])
+                if x.get("thumbnail_url")
+            ]
+
+            return urls or [url]
         case "tenor.com":
             view_path = result.path
 
             # e.g https://tenor.com/buEMs.gif
             if result.path.endswith(".gif"):
                 # redirect to view page
-                r = requests.get(url)
+                r = requests.get(url, timeout=REQUEST_TIMEOUT)
                 if r.status_code != 200:
                     logger.error(f"{r.status_code} from {url}")
                     return [url]
@@ -148,7 +168,7 @@ def handle_link(url: str) -> list[str]:
 
             embed_url = f"https://tenor.com/embed/{id[0]}"
 
-            r = requests.get(embed_url)
+            r = requests.get(embed_url, timeout=REQUEST_TIMEOUT)
             if r.status_code != 200:
                 logger.error(f"{r.status_code} from {embed_url}")
                 return [url]
