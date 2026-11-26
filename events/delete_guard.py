@@ -26,7 +26,9 @@ class DeleteGuardEvent(commands.Cog):
         if message.guild is None:
             return  # DMs
 
-        assert isinstance(message.author, Member)
+        if not isinstance(message.author, Member):
+            return  # Author was a plain User
+
         assert isinstance(message.guild, Guild)
 
         if not await self.dao.exists(GuardedUser.from_member(message.author)):
@@ -34,7 +36,9 @@ class DeleteGuardEvent(commands.Cog):
 
         guild_name = message.guild.name
 
-        embeds = msg_embed(message, f"{message.author.name}", "Deleted Message")
+        embeds = await msg_embed(
+            message, f"{message.author.name}", "Deleted Message", allow_nsfw=False
+        )
         await message.channel.send(embeds=embeds)
 
         self.logger.info(f"[{guild_name}]: {message.author} deleted their message")
@@ -44,14 +48,16 @@ class DeleteGuardEvent(commands.Cog):
         if before.guild is None:
             return  # DMs
 
-        assert isinstance(before.author, Member)
+        if not isinstance(before.author, Member):
+            return  # Author was a plain User
+
         assert isinstance(before.guild, Guild)
 
-        cfg = await Config.load(before.guild.id)
-
-        # for some reason discord fires this event even if content is unchanged
+        # Discord will fire this event when it adds a link preview, even if the content is unchanged. 
         if before.content == after.content:
             return
+
+        cfg = await Config.load(before.guild.id)
 
         if not await self.dao.exists(GuardedUser.from_member(before.author)):
             return
@@ -68,7 +74,9 @@ class DeleteGuardEvent(commands.Cog):
         channel = await self.bot.fetch_channel(cfg.delete_guard.channel_id)
         assert isinstance(channel, TextChannel)
 
-        embeds = msg_embed(before, f"{before.author.name}", "Old Message Content")
+        embeds = await msg_embed(
+            before, f"{before.author.name}", "Old Message Content", allow_nsfw=False
+        )
         await channel.send(embeds=embeds)
 
         self.logger.info(f"[{guild_name}]: {before.author} edited their message")
