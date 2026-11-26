@@ -3,6 +3,7 @@ import json
 import logging
 import re
 from datetime import UTC, datetime
+from enum import StrEnum
 from urllib.parse import urlparse
 
 import requests
@@ -37,6 +38,15 @@ IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 
 url_regex = re.compile(URL_REGEX)
 
+EMBED_FIELD_LIMIT = 1024  # max length
+
+
+class HideReason(StrEnum):
+    """why an attachment was listed as a link instead of shown as an image"""
+
+    NSFW = "NSFW"
+    # TODO(kajo): SPOILER = "Spoiler"
+
 
 async def message_channel(client: Client, channel_id: int) -> Messageable | None:
     """
@@ -58,7 +68,8 @@ async def msg_embed(
     """
     refers to a user's message. supports attachemnts and links to twitter + other direct links to images
 
-    allow_nsfw: embed images from sensitive tweets and R-18 (not R-18G) pixiv art
+    allow_nsfw: embed images from sensitive tweets, R-18 (not R-18G) pixiv art, and
+    media discord flagged as explicit
     """
 
     # run it off the event loop to avoid blocking HTTP requests
@@ -94,8 +105,26 @@ def _build_msg_embed(
     if message_title != "Deleted Message":  # FIXME: make this an enum or something
         main.add_field(name="Link", value=message.jump_url, inline=False)
 
+    # TODO(kajo): respect spoiler, (text, atachments, links inside ||spoiler||)
     links: list[str] = url_regex.findall(message.content)
-    attachments: list[str] = [x.url for x in message.attachments]
+
+    # FIXME(kajo): don't make this all or nothing
+    if not allow_nsfw and any(e.flags.contains_explicit_media for e in message.embeds):
+        links = []
+
+    attachments: list[str] = [] # to be embedded
+    hidden: list[tuple[HideReason, str]] = [] # to be listed after as URLs
+
+    for a in message.attachments:
+        if not allow_nsfw and a.flags.contains_explicit_media:
+            hidden.append((HideReason.NSFW, a.url))
+        else:
+            attachments.append(a.url)
+
+    if hidden:
+        main.add_field(
+            name="Attachments", value=_hidden_links(hidden), inline=False
+        )
 
     # eg. a tweet with multiple images, only one can be the main image
     extra_img_urls = []
@@ -133,6 +162,27 @@ def _build_msg_embed(
         embeds.append(Embed(url=DUMMY_URL).set_image(url=url))
 
     return embeds
+
+
+def _hidden_links(hidden: list[tuple[HideReason, str]]) -> str:
+    """
+    "reason: ||url||" per line, dropping whole entries that would pass the
+    field limit
+    """
+    lines: list[str] = []
+    length = 0
+
+    for reason, url in hidden:
+        line = f"{reason}: ||{url}||"
+        # leave room for the "(+N more)" note
+        if length + len(line) + 1 > EMBED_FIELD_LIMIT - 16:
+            lines.append(f"(+{len(hidden) - len(lines)} more)")
+            break
+
+        lines.append(line)
+        length += len(line) + 1
+
+    return "\n".join(lines)
 
 
 def handle_link(url: str, *, allow_nsfw: bool = False) -> list[str]:
@@ -322,7 +372,6 @@ def _resolve_link(url: str, allow_nsfw: bool) -> list[str]:
         ):
             return _resolve_pixiv(url, art_id, allow_nsfw)
 
-        # instagram.com and its fixers (kkinstagram.com, ddinstagram.com, ...)
         # /p/<code> and /<user>/p/<code>. reels aren't handled, no-one posts them
         case (host, ["p", code, *_]) if host.endswith("instagram.com"):
             return _resolve_instagram(url, code)
