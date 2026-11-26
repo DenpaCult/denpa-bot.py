@@ -121,7 +121,7 @@ class CringeEvent(Cog):
                 )
 
             await log_ch.send(
-                embeds=msg_embed(
+                embeds=await msg_embed(
                     message, f"{message.author.name} posted cringe", allow_nsfw=True
                 )
             )

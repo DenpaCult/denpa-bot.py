@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -13,7 +14,7 @@ URL_REGEX = r"https?://(?:www\.)?(?:[a-zA-Z0-9@:%._+~#=]{1,256}\.)(?:[a-zA-Z0-9(
 
 COLOUR_SAPWOOD = 0xE8B693
 DUMMY_URL = "https://example.com"
-REQUEST_TIMEOUT = 10  # seconds; these calls block the event loop
+REQUEST_TIMEOUT = (3, 5) # (connect, read)
 
 # pixiv + phixiv embed-fixer (plus c for compact)
 PIXIV_HOSTS = {
@@ -43,7 +44,7 @@ async def message_channel(client: Client, channel_id: int) -> Messageable | None
     return channel if isinstance(channel, Messageable) else None
 
 
-def msg_embed(
+async def msg_embed(
     message: Message,
     author_title: str,
     message_title: str = "Message",
@@ -55,6 +56,19 @@ def msg_embed(
 
     allow_nsfw: embed images from sensitive tweets and R-18 (not R-18G) pixiv art
     """
+
+    # run it off the event loop to avoid blocking HTTP requests
+    return await asyncio.to_thread(
+        _build_msg_embed, message, author_title, message_title, allow_nsfw
+    )
+
+
+def _build_msg_embed(
+    message: Message,
+    author_title: str,
+    message_title: str,
+    allow_nsfw: bool,
+) -> list[Embed]:
     embeds: list[Embed] = []
 
     main = (
