@@ -37,7 +37,7 @@ class DeleteGuardEvent(commands.Cog):
         guild_name = message.guild.name
 
         embeds = await msg_embed(
-            message, f"{message.author.name}", "Deleted Message", allow_nsfw=True
+            message, f"{message.author.name}", "Deleted Message", allow_nsfw=False
         )
         await message.channel.send(embeds=embeds)
 
@@ -75,7 +75,7 @@ class DeleteGuardEvent(commands.Cog):
         assert isinstance(channel, TextChannel)
 
         embeds = await msg_embed(
-            before, f"{before.author.name}", "Old Message Content", allow_nsfw=True
+            before, f"{before.author.name}", "Old Message Content", allow_nsfw=False
         )
         await channel.send(embeds=embeds)
 
