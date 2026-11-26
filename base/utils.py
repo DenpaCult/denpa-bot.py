@@ -106,50 +106,52 @@ def handle_link(url: str) -> list[str]:
         return [url]
 
 
+def _resolve_tweet(url: str, tweet_id: str) -> list[str]:
+    logger = logging.getLogger("utils.cringe.handle_link")
+    api = f"https://api.fxtwitter.com/status/{tweet_id}"
+
+    r = requests.get(api, timeout=REQUEST_TIMEOUT)
+    if r.status_code != 200:
+        logger.error(f"{r.status_code} from {api}")
+        return [url]
+
+    # fxtwitter answers unknown tweet ids with a 200 HTML page
+    try:
+        obj = r.json()
+    except ValueError:
+        logger.error(f"non-JSON response from {api}")
+        return [url]
+
+    # media will be {} on text-only tweets
+    media = obj.get("tweet", {}).get("media", {})
+
+    # collect all images
+    urls: list[str] = [x["url"] for x in media.get("photos", [])]
+
+    # collect all video thumbnails
+    urls += [
+        x["thumbnail_url"] for x in media.get("videos", []) if x.get("thumbnail_url")
+    ]
+
+    return urls or [url]
+
+
 def _resolve_link(url: str) -> list[str]:
     logger = logging.getLogger("utils.cringe.handle_link")
     result = urlparse(url)
 
-    match result.netloc:
-        # TODO: how many more of these things do dsd members use...
-        case (
-            "x.com"
-            | "twitter.com"
-            | "fixupx.com"
-            | "fixvx.com"
-            | "cunnyx.com"
-            | "vxtwitter.com"
-            | "fxtwitter.com"
-            | "hotyurisex.com"
-            | "girlcockx.com"
-            | "twittpr.com"
-            | "stupidpenisx.com"
-            | "hitlerx.com"
-        ):
-            api = result._replace(netloc="api.fxtwitter.com")
+    # "/user/status/123/photo/1" -> ["user", "status", "123", "photo", "1"]
+    segments = result.path.strip("/").split("/")
 
-            r = requests.get(api.geturl(), timeout=REQUEST_TIMEOUT)
-            if r.status_code != 200:
-                logger.error(f"{r.status_code} from {api.geturl()}")
-                return [url]
+    match (result.netloc, segments):
+        # x.com, twitter.com, and every fxtwitter-style clone share the same path
+        # shape, so match on that
+        case (_, [_, "status" | "statuses", tweet_id, *_]) if tweet_id.isdecimal():
+            return _resolve_tweet(url, tweet_id)
+        case (_, ["i", "web", "status", tweet_id, *_]) if tweet_id.isdecimal():
+            return _resolve_tweet(url, tweet_id)
 
-            obj = json.loads(r.text)
-
-            # media will be {} on text-only tweets
-            media = obj.get("tweet", {}).get("media", {})
-
-            # collect all images
-            urls: list[str] = [x["url"] for x in media.get("photos", [])]
-
-            # collect all video thumbnails
-            urls += [
-                x["thumbnail_url"]
-                for x in media.get("videos", [])
-                if x.get("thumbnail_url")
-            ]
-
-            return urls or [url]
-        case "tenor.com":
+        case ("tenor.com", _):
             view_path = result.path
 
             # e.g https://tenor.com/buEMs.gif
