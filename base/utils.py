@@ -14,7 +14,7 @@ URL_REGEX = r"https?://(?:www\.)?(?:[a-zA-Z0-9@:%._+~#=]{1,256}\.)(?:[a-zA-Z0-9(
 
 COLOUR_SAPWOOD = 0xE8B693
 DUMMY_URL = "https://example.com"
-REQUEST_TIMEOUT = (3, 5) # (connect, read)
+REQUEST_TIMEOUT = (3, 5)  # (connect, read)
 
 # pixiv + phixiv embed-fixer (plus c for compact)
 PIXIV_HOSTS = {
@@ -30,6 +30,10 @@ PIXIV_HOSTS = {
 
 # just in case someone posts manga
 PIXIV_MAX_PAGES = 4
+
+DISCORDBOT_UA = "Mozilla/5.0 (compatible; Discordbot/2.0; +https://discordapp.com)"
+INSTAGRAM_CDN_HOSTS = (".fbcdn.net", ".cdninstagram.com")
+IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 
 url_regex = re.compile(URL_REGEX)
 
@@ -184,6 +188,7 @@ def _resolve_tweet(url: str, tweet_id: str, allow_nsfw: bool) -> list[str]:
 
     return urls or [url]
 
+
 def _resolve_pixiv(url: str, art_id: str, allow_nsfw: bool) -> list[str]:
     logger = logging.getLogger("utils.cringe.handle_link")
     api = f"https://www.pixiv.net/ajax/illust/{art_id}"
@@ -192,7 +197,6 @@ def _resolve_pixiv(url: str, art_id: str, allow_nsfw: bool) -> list[str]:
     info = _fetch_json(api)
     if info is None or info.get("error"):
         return [url]
-
 
     # TODO(kajo): enum?
     # 0 = all ages, 1 = R-18 (sexual), 2 = R-18G (gore)
@@ -260,6 +264,39 @@ def _phixiv_og_image(url: str, art_id: str) -> list[str]:
     return [image]
 
 
+def _resolve_instagram(url: str, code: str) -> list[str]:
+    logger = logging.getLogger("utils.cringe.handle_link")
+    kk_url = f"https://kkinstagram.com/p/{code}"
+
+    # by using Discord's User Agent, we can get kkinstagram.com to
+    # 302 to the post's first image on instagram's CDN
+    r = requests.get(
+        kk_url,
+        headers={"User-Agent": DISCORDBOT_UA},
+        allow_redirects=False,
+        timeout=REQUEST_TIMEOUT,
+    )
+
+    location = urlparse(r.headers.get("location", ""))
+
+    # kkinstagram may:
+    # - redirect to an mp4 which we can't embed
+    # - return a 504
+    # - redirects to instagram.com which won't have anything for us
+    if not (
+        r.is_redirect
+        and location.netloc.endswith(INSTAGRAM_CDN_HOSTS)
+        and location.path.lower().endswith(IMAGE_EXTENSIONS)
+    ):
+        logger.warning(
+            f"{r.status_code} from {kk_url}, location={location.geturl()[:100]!r}"
+        )
+        return [url]
+
+    # NB: the CDN url is signed and expires after a while (its oe= param)
+    return [location.geturl()]
+
+
 def _resolve_link(url: str, allow_nsfw: bool) -> list[str]:
     logger = logging.getLogger("utils.cringe.handle_link")
     result = urlparse(url)
@@ -276,10 +313,21 @@ def _resolve_link(url: str, allow_nsfw: bool) -> list[str]:
             return _resolve_tweet(url, tweet_id, allow_nsfw)
 
         # /artworks/<id> and /<lang>/artworks/<id>
-        case (host, ["artworks", art_id, *_]) if host in PIXIV_HOSTS and art_id.isdecimal():
+        case (host, ["artworks", art_id, *_]) if (
+            host in PIXIV_HOSTS and art_id.isdecimal()
+        ):
             return _resolve_pixiv(url, art_id, allow_nsfw)
-        case (host, [_, "artworks", art_id, *_]) if host in PIXIV_HOSTS and art_id.isdecimal():
+        case (host, [_, "artworks", art_id, *_]) if (
+            host in PIXIV_HOSTS and art_id.isdecimal()
+        ):
             return _resolve_pixiv(url, art_id, allow_nsfw)
+
+        # instagram.com and its fixers (kkinstagram.com, ddinstagram.com, ...)
+        # /p/<code> and /<user>/p/<code>. reels aren't handled, no-one posts them
+        case (host, ["p", code, *_]) if host.endswith("instagram.com"):
+            return _resolve_instagram(url, code)
+        case (host, [_, "p", code, *_]) if host.endswith("instagram.com"):
+            return _resolve_instagram(url, code)
 
         case ("tenor.com", _):
             view_path = result.path
