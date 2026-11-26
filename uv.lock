@@ -2,6 +2,9 @@ version = 1
 revision = 5
 requires-python = ">=3.13"
 
+[options]
+prerelease-mode = "allow"
+
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.7.1"
@@ -463,7 +466,7 @@ requires-dist = [
     { name = "pynacl", specifier = ">=1.6.1" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "requests", specifier = ">=2.32.5" },
-    { name = "yt-dlp", extras = ["curl-cffi", "default"], specifier = ">=2026.11.20.232656.dev0" },
+    { name = "yt-dlp", extras = ["curl-cffi", "default"], specifier = ">=2026.11.23" },
 ]
 
 [[package]]
@@ -989,11 +992,11 @@ wheels = [
 
 [[package]]
 name = "yt-dlp"
-version = "2026.11.20.232656.dev0"
+version = "2026.11.24.232653.dev0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5f/92/c2b2149a908cfe2e9336ca7d5f1fa8d961a9f0e3f9998bae1f53aab26036/yt_dlp-2026.11.20.232656.dev0.tar.gz", hash = "sha256:4e2d86ad0f897d0aae8a1345ec15a1a0fa985c9e34d15abe1df9e61bf99cfe65", size = 3052059, upload-time = "2026-11-20T23:31:37.411Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/88/19/c412e9a947a64f40d09bdbbbd10448026466af2093dc445450fb9a6d89d3/yt_dlp-2026.11.24.232653.dev0.tar.gz", hash = "sha256:adf0414b54844070275a24feff1240c00e77c953b4ebf5fc5ce22f4aaf4cc7f8", size = 3052115, upload-time = "2026-11-24T23:33:03.345Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/89/d1088aa78a91f0d52d6e6b53c2096076fb00376334813b3e2f2ee5b2937f/yt_dlp-2026.11.20.232656.dev0-py3-none-any.whl", hash = "sha256:ad1af580899c63dba2090f80de3ec5963df875bf8c9de08d6b9b71adfffb9301", size = 3188092, upload-time = "2026-11-20T23:31:34.384Z" },
+    { url = "https://files.pythonhosted.org/packages/99/70/b68285a2d10619cdf0202afbf50c3c12d8ebb8805478993027b7206975ce/yt_dlp-2026.11.24.232653.dev0-py3-none-any.whl", hash = "sha256:d9efc48001599179033cf97b9cb2c268be52eea10d068cb7a54e19f70aed7bf8", size = 3186866, upload-time = "2026-11-24T23:33:00.663Z" },
 ]
 
 [package.optional-dependencies]

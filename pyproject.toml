@@ -12,5 +12,18 @@ dependencies = [
     "pynacl>=1.6.1",
     "python-dotenv>=1.2.1",
     "requests>=2.32.5",
-    "yt-dlp[curl-cffi,default]>=2026.11.20.232656.dev0",
+    "yt-dlp[curl-cffi,default]>=2026.11.23",
 ]
+
+[tool.uv]
+# we want the yt-dlp dep to track nightlies. uv doesn't seem to have a
+# per-package setting yet so we have to set this for every package.....
+#
+# this setting will matter when:
+# - we run `uv lock --upgrade`
+# - we run `uv add <package>`
+# - we delete `uv.lock` and then run `uv sync`
+#
+# the only thing we might do in the future is `uv add`
+# when you do, check the "Updated/Added" output for a/b/rc/.dev versions
+prerelease = "allow"
